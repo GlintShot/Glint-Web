@@ -349,6 +349,54 @@ select:disabled {
   animation: glint-float 3s ease-in-out infinite;
 }
 
+@keyframes glint-status-code {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.14;
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+    opacity: 0.22;
+  }
+}
+
+.glint-status-code {
+  font-size: clamp(7.5rem, 28vw, 14rem);
+  line-height: 0.85;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--glint-text);
+  animation: glint-status-code 5s ease-in-out infinite;
+  user-select: none;
+  pointer-events: none;
+}
+
+@keyframes glint-status-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.glint-status-rise {
+  animation: glint-status-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glint-status-code {
+    animation: none;
+    opacity: 0.16;
+  }
+  .glint-status-rise {
+    animation: none;
+  }
+}
+
 @keyframes glint-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(245, 208, 111, 0); }
   50% { box-shadow: 0 0 20px 4px rgba(245, 208, 111, 0.15); }
