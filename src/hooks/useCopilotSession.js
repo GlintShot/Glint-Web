@@ -12,17 +12,24 @@ export function useCopilotSession({
   getDeviceFrame,
   getWhiteScreenshot,
   updateFrame,
+  remapPaletteColors,
+  setBackgroundState,
+  setDeviceBezel,
+  setDeviceBezelOnFrame,
+  patchScreenshotStyle,
+  patchScreenshotStyleOnFrame,
+  extractTheme,
   onDirty,
   getMeta,
 }) {
-  const [ui, setUi] = useState({
+  const [ui, setUi] = useState(() => ({
     enabled: false,
     paused: true,
     token: null,
     pairCode: null,
     generation: 0,
     status: null,
-  });
+  }));
 
   const ctxRef = useRef({});
   ctxRef.current = {
@@ -33,6 +40,13 @@ export function useCopilotSession({
     getDeviceFrame,
     getWhiteScreenshot,
     updateFrame,
+    remapPaletteColors,
+    setBackgroundState,
+    setDeviceBezel,
+    setDeviceBezelOnFrame,
+    patchScreenshotStyle,
+    patchScreenshotStyleOnFrame,
+    extractTheme,
   };
 
   const metaRef = useRef(getMeta);
@@ -48,7 +62,17 @@ export function useCopilotSession({
     [onDirty],
   );
 
+  // Sync UI with session (including sessionStorage restore on mount).
   useEffect(() => {
+    const snap = session.getState();
+    setUi({
+      enabled: snap.enabled,
+      paused: snap.paused,
+      token: snap.token,
+      pairCode: snap.pairCode,
+      generation: snap.generation,
+      status: session.status,
+    });
     const unsub = session.subscribe((event) => {
       setUi({
         enabled: session.enabled,

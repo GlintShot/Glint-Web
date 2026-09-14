@@ -13,6 +13,8 @@ import {
 } from './copilotRegistry.js';
 
 const CHANNEL = 'glint-copilot';
+/** Per-tab: survive reload/HMR until user hits Close on Copilot. */
+const PERSIST_KEY = 'glint.copilot.tab.v1';
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -36,21 +38,72 @@ function storage() {
   }
 }
 
+function tabStorage() {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPersistedSession() {
+  const store = tabStorage();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.enabled || !data?.pairCode || !data?.token || !data?.tabId) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedSession(snapshot) {
+  const store = tabStorage();
+  if (!store) return;
+  try {
+    if (!snapshot?.enabled) {
+      store.removeItem(PERSIST_KEY);
+      return;
+    }
+    store.setItem(PERSIST_KEY, JSON.stringify(snapshot));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 /**
  * @param {{ getCtx: () => object, onDirty?: () => void, getMeta?: () => object }} opts
  */
 export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
-  let enabled = false;
-  let paused = true;
-  let token = null;
-  let pairCode = null;
-  let tabId = newTabId();
-  let generation = 0;
+  const restored = readPersistedSession();
+  let enabled = !!restored?.enabled;
+  let paused = restored ? !!restored.paused : true;
+  let token = restored?.token || null;
+  let pairCode = restored?.pairCode || null;
+  let tabId = restored?.tabId || newTabId();
+  let generation = Number.isFinite(restored?.generation) ? restored.generation : 0;
   let applying = false;
   let status = null;
   let baseTitle = typeof document !== 'undefined' ? document.title : '';
   const listeners = new Set();
   let heartbeat = null;
+
+  const persist = () => {
+    writePersistedSession(
+      enabled
+        ? { enabled: true, paused, token, pairCode, tabId, generation }
+        : null,
+    );
+  };
+
+  const startHeartbeat = () => {
+    if (heartbeat) clearInterval(heartbeat);
+    if (!enabled) return;
+    heartbeat = setInterval(() => publishRegistry(), 8_000);
+  };
 
   const emit = (event) => {
     status = event;
@@ -138,6 +191,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     /** Human (or successful agent) mutate - agents must re-getEditorState. */
     bump(reason = 'edit') {
       generation += 1;
+      persist();
       publishRegistry();
       emit({ phase: 'generation', generation, reason, pairCode, at: Date.now() });
       return generation;
@@ -150,9 +204,9 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       pairCode = newPairCode();
       if (typeof document !== 'undefined') baseTitle = document.title.replace(/^\[Glint [A-Z0-9]{4}\]\s*/, '');
       syncTitle();
+      persist();
       publishRegistry(true);
-      if (heartbeat) clearInterval(heartbeat);
-      heartbeat = setInterval(() => publishRegistry(), 8_000);
+      startHeartbeat();
       emit({
         phase: 'session',
         enabled: true,
@@ -165,6 +219,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       return { token, pairCode, generation };
     },
 
+    /** User Close - stop agent access for this tab. */
     disable() {
       enabled = false;
       paused = true;
@@ -175,6 +230,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
         heartbeat = null;
       }
       clearRegistry();
+      writePersistedSession(null);
       syncTitle();
       emit({
         phase: 'session',
@@ -187,8 +243,21 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       });
     },
 
+    /**
+     * React unmount / HMR - keep Allow-agent intent in sessionStorage.
+     * Does not clear pair code; next mount restores.
+     */
+    hibernate() {
+      if (heartbeat) {
+        clearInterval(heartbeat);
+        heartbeat = null;
+      }
+      persist();
+    },
+
     pause() {
       paused = true;
+      persist();
       publishRegistry();
       emit({ phase: 'session', enabled, paused: true, token, pairCode, generation, at: Date.now() });
     },
@@ -196,6 +265,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     resume() {
       if (!enabled) return false;
       paused = false;
+      persist();
       publishRegistry(true);
       emit({ phase: 'session', enabled: true, paused: false, token, pairCode, generation, at: Date.now() });
       return true;
@@ -262,6 +332,45 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       if (op === 'matchDeviceTransform' && present) {
         return runBoardMatch(ctx, args, { paceMs });
       }
+      // Board-wide bezel / chrome: sidebar first, then one artboard at a time under the cursor.
+      if (op === 'setDeviceBezel' && present && args.frameIndex == null) {
+        return runPresentedBoardWalk(ctx, {
+          op,
+          args,
+          paceMs,
+          uiTarget: `device-frame:${args.bezelId ?? args.frameId ?? args.id ?? 'none'}`,
+          uiLabel: describeOp(op, args),
+          perFrame: (frameIndex) => runCanvasOp(ctx, 'setDeviceBezel', { ...args, frameIndex }),
+        });
+      }
+      if (op === 'setScreenshotStyle' && present && args.frameIndex == null) {
+        const theme = args.statusBarTheme || args.patch?.statusBarTheme;
+        const uiTarget = theme
+          ? `status-bar-theme:${theme}`
+          : args.statusBarEnabled != null || args.patch?.statusBarEnabled != null
+            ? 'status-bar-toggle'
+            : 'tab-device';
+        return runPresentedBoardWalk(ctx, {
+          op,
+          args,
+          paceMs,
+          uiTarget,
+          uiLabel: describeOp(op, args),
+          perFrame: (frameIndex) => runCanvasOp(ctx, 'setScreenshotStyle', { ...args, frameIndex }),
+        });
+      }
+      if (op === 'remapColors' && present && args.frameIndex == null) {
+        return runPresentedBoardWalk(ctx, {
+          op,
+          args,
+          paceMs,
+          uiTarget: 'tab-colors',
+          uiLabel: describeOp(op, args),
+          // Color remap is global; walk artboards under the cursor after one apply.
+          beforeWalk: () => runCanvasOp(ctx, 'remapColors', args),
+          perFrame: async () => ({ ok: true }),
+        });
+      }
 
       return runPresentedOp(ctx, op, args, { present, paceMs });
     },
@@ -295,6 +404,132 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       );
     },
   };
+
+  async function runPresentedBoardWalk(ctx, {
+    op,
+    args,
+    paceMs,
+    uiTarget,
+    uiLabel,
+    beforeWalk,
+    perFrame,
+  }) {
+    applying = true;
+    const frames = ctx.getFrames?.() || [];
+    const count = frames.length;
+
+    if (uiTarget) {
+      emit({
+        phase: 'select',
+        op,
+        args,
+        label: uiLabel || describeOp(op, args),
+        uiTarget,
+        present: true,
+        generation,
+        pairCode,
+        at: Date.now(),
+      });
+      if (paceMs > 0) await sleep(paceMs);
+      if (paused) {
+        applying = false;
+        emit({ phase: 'aborted', op, reason: 'paused', at: Date.now() });
+        return { ok: false, error: 'paused' };
+      }
+      emit({
+        phase: 'apply',
+        op,
+        args,
+        label: uiLabel || describeOp(op, args),
+        uiTarget,
+        present: true,
+        generation,
+        pairCode,
+        at: Date.now(),
+      });
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.4));
+    }
+
+    let prelude = { ok: true };
+    if (beforeWalk) {
+      try {
+        prelude = await beforeWalk();
+      } catch (err) {
+        applying = false;
+        emit({ phase: 'error', op, error: String(err?.message || err), at: Date.now() });
+        return { ok: false, error: 'op_threw', detail: String(err?.message || err) };
+      }
+      if (!prelude?.ok) {
+        applying = false;
+        emit({ phase: 'error', op, error: prelude?.error || 'failed', at: Date.now() });
+        return { ...prelude, generation, pairCode };
+      }
+    }
+
+    const applied = [];
+    for (let frameIndex = 0; frameIndex < count; frameIndex++) {
+      if (paused) {
+        applying = false;
+        emit({ phase: 'aborted', op, reason: 'paused', applied, at: Date.now() });
+        return { ok: false, error: 'paused', applied, generation, pairCode };
+      }
+
+      emit({
+        phase: 'select',
+        op,
+        args: { ...args, frameIndex },
+        label: `Frame ${frameIndex + 1}`,
+        frameIndex,
+        present: true,
+        generation,
+        pairCode,
+        at: Date.now(),
+      });
+      await runCanvasOp(ctx, 'selectFrame', { frameIndex });
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.45));
+
+      emit({
+        phase: 'apply',
+        op,
+        args: { ...args, frameIndex },
+        label: `${uiLabel || describeOp(op, args)} · Frame ${frameIndex + 1}`,
+        frameIndex,
+        present: true,
+        generation,
+        pairCode,
+        at: Date.now(),
+      });
+
+      let result;
+      try {
+        result = await perFrame(frameIndex);
+      } catch (err) {
+        applying = false;
+        emit({ phase: 'error', op, error: String(err?.message || err), frameIndex, at: Date.now() });
+        return { ok: false, error: 'op_threw', detail: String(err?.message || err), applied };
+      }
+      if (result?.ok) applied.push({ frameIndex, ...result });
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.35));
+    }
+
+    generation += 1;
+    onDirty?.();
+    persist();
+    publishRegistry();
+    applying = false;
+    const result = { ok: true, applied, ...(prelude?.ok ? {} : { prelude }) };
+    emit({
+      phase: 'done',
+      op,
+      args,
+      label: uiLabel || describeOp(op, args),
+      result,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+    return { ...result, generation, pairCode };
+  }
 
   async function runPresentedOp(ctx, op, args, { present, paceMs }) {
     const label = describeOp(op, args);
@@ -476,6 +711,25 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     return { ...result, generation, pairCode };
   }
 
+  if (enabled && pairCode) {
+    if (typeof document !== 'undefined') {
+      baseTitle = document.title.replace(/^\[Glint [A-Z0-9]{4}\]\s*/, '');
+      syncTitle();
+    }
+    publishRegistry(true);
+    startHeartbeat();
+    emit({
+      phase: 'session',
+      enabled: true,
+      paused,
+      token,
+      pairCode,
+      generation,
+      restored: true,
+      at: Date.now(),
+    });
+  }
+
   return api;
 }
 
@@ -493,6 +747,22 @@ function describeOp(op, args) {
       return args.url ? 'Replace screenshot' : 'Clear screenshot';
     case 'matchDeviceTransform':
       return `Match transform from Frame ${(args.sourceIndex ?? 0) + 1}`;
+    case 'remapColors':
+      return `Remap ${Array.isArray(args.pairs) ? args.pairs.length : 1} theme color(s)`;
+    case 'setBackground':
+      return `Background → ${args.value ?? args.color ?? args.type}`;
+    case 'setDeviceBezel':
+      return `Device → ${args.bezelId ?? args.frameId ?? 'none'}`;
+    case 'setScreenshotStyle':
+      return args.statusBarTheme
+        ? `Status bar → ${args.statusBarTheme}`
+        : 'Update screenshot chrome';
+    case 'setText':
+      return `Edit text on Frame ${(args.frameIndex ?? 0) + 1}`;
+    case 'addText':
+      return 'Add text';
+    case 'extractTheme':
+      return 'Extract theme from screenshots';
     case 'getEditorState':
       return 'Read editor state';
     default:
@@ -550,6 +820,7 @@ export function installCopilotBridge(session) {
     window.removeEventListener('focus', onFocus);
     window.removeEventListener('blur', onBlur);
     if (window.__GLINT_COPILOT__ === bridge) delete window.__GLINT_COPILOT__;
-    session.disable();
+    // Keep Allow-agent across HMR / remount - only Close clears it.
+    session.hibernate();
   };
 }
