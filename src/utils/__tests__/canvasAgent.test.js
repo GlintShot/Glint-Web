@@ -94,6 +94,20 @@ describe('canvasAgent', () => {
     expect(res.ok).toBe(false);
     expect(res.error).toBe('unknown_op');
   });
+
+  it('remapColors uses Editor hook when provided', async () => {
+    const remapPaletteColors = vi.fn();
+    const ctx = { ...makeCtx([makeDevice()]), remapPaletteColors };
+    const res = await runCanvasOp(ctx, 'remapColors', {
+      pairs: [['#611AB4', '#E85D04'], ['#8030DD', '#F48C06']],
+    });
+    expect(res.ok).toBe(true);
+    expect(remapPaletteColors).toHaveBeenCalledOnce();
+    expect(remapPaletteColors.mock.calls[0][0]).toEqual([
+      ['#611AB4', '#E85D04'],
+      ['#8030DD', '#F48C06'],
+    ]);
+  });
 });
 
 describe('copilotSession', () => {
