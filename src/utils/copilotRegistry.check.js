@@ -67,7 +67,7 @@ upsertBoard(storage, {
 removeBoard(storage, 't3');
 assert.equal(findBoard(storage, 'ZZ99', { now }), null);
 
-assert.equal(applyTitlePair('Glint Web', 'K7MP'), '[Glint K7MP] Glint Web');
-assert.equal(applyTitlePair('[Glint AB12] Glint Web', 'K7MP'), '[Glint K7MP] Glint Web');
+assert.equal(applyTitlePair('Glint Studio', 'K7MP'), '[Glint K7MP] Glint Studio');
+assert.equal(applyTitlePair('[Glint AB12] Glint Studio', 'K7MP'), '[Glint K7MP] Glint Studio');
 
 console.log('copilotRegistry.check.js: ok');
