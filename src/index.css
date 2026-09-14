@@ -428,6 +428,12 @@ select:disabled {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
   50% { transform: translate(1px, 2px) rotate(-2deg); }
 }
+.glint-agent-target {
+  outline: 2px solid rgba(201, 162, 39, 0.85) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.18);
+  transition: outline 0.15s ease, box-shadow 0.15s ease;
+}
 @media (prefers-reduced-motion: reduce) {
   .glint-agent-cursor {
     transition: none;

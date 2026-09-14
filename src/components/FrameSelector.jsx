@@ -22,6 +22,7 @@ export default function FrameSelector({ selected, onChange, store }) {
                 ? 'border-glint-accent ring-2 ring-glint-accent/40 bg-glint-accent-muted'
                 : 'border-glint-border bg-glint-surface-2 hover:border-glint-accent/50'
             }`}
+            data-glint-agent={`device-frame:${f.id ?? 'none'}`}
           >
             {f.id ? (
               <img

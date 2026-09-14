@@ -160,6 +160,11 @@ export default function Editor() {
   const historyRef = useRef(createEditorHistory());
   const restoringRef = useRef(false);
   const pushHistoryRef = useRef(() => {});
+  const applyPaletteRemapsRef = useRef(() => {});
+  const setDeviceBezelRef = useRef(async () => {});
+  const applyBezelToFrameIndexRef = useRef(async () => {});
+  const patchScreenshotStyleRef = useRef(() => {});
+  const extractThemeRef = useRef(async () => {});
   const canvasGestureRef = useRef(new WeakSet());
   const [historyTick, setHistoryTick] = useState(0);
   const styleApplyTimerRef = useRef(0);
@@ -210,10 +215,39 @@ export default function Editor() {
           gesturing = false;
         });
       }
+      // Sidebar Device picker: mirror this artboard's bezel when it is the active frame.
+      const activeId = framesRef.current[activeIndexRef.current]?.id;
+      if (frameId === activeId) {
+        const device = canvas.getObjects?.().find((o) => o.glintRole === 'framed-screenshot');
+        if (device?.glintFrameId) setDeviceFrame(device.glintFrameId);
+        else if (canvas.getObjects?.().some((o) => o.glintRole === 'screenshot')) {
+          setDeviceFrame(null);
+        }
+      }
     } else {
       delete canvasMapRef.current[frameId];
     }
   }, []);
+
+  /** Keep Design → Device highlight in sync with the active artboard's live bezel. */
+  const syncDeviceFrameFromActive = useCallback(() => {
+    const frame = framesRef.current[activeIndexRef.current];
+    if (!frame) return;
+    const canvas = canvasMapRef.current[frame.id];
+    if (!canvas?.getObjects) return;
+    const device = canvas.getObjects().find((o) => o.glintRole === 'framed-screenshot');
+    if (device?.glintFrameId) {
+      setDeviceFrame((prev) => (prev === device.glintFrameId ? prev : device.glintFrameId));
+      return;
+    }
+    if (canvas.getObjects().some((o) => o.glintRole === 'screenshot')) {
+      setDeviceFrame((prev) => (prev === null ? prev : null));
+    }
+  }, []);
+
+  useEffect(() => {
+    syncDeviceFrameFromActive();
+  }, [activeIndex, frames, syncDeviceFrameFromActive]);
 
   useEffect(() => {
     const id = frames[activeIndex]?.id;
@@ -228,6 +262,53 @@ export default function Editor() {
     getDeviceFrame: () => deviceFrameRef.current,
     getWhiteScreenshot,
     updateFrame,
+    remapPaletteColors: (pairs) => {
+      pushHistoryRef.current();
+      applyPaletteRemapsRef.current(pairs);
+    },
+    setBackgroundState: (bg) => {
+      if (!bg) return;
+      pushHistoryRef.current();
+      setBackgroundState(bg);
+    },
+    setDeviceBezel: async (bezelId) => {
+      pushHistoryRef.current();
+      await setDeviceBezelRef.current(bezelId);
+    },
+    setDeviceBezelOnFrame: async (bezelId, frameIndex) => {
+      pushHistoryRef.current();
+      const target = getStoreTarget(exportPreset);
+      const frameId = resolveFrameForStore(bezelId, target, null);
+      if (bezelId != null && frameId !== bezelId) return { ok: false, error: 'bezel_not_allowed' };
+      setDeviceFrame(frameId);
+      styleApplyGenRef.current += 1;
+      await applyBezelToFrameIndexRef.current(frameIndex, frameId);
+      markDirty();
+      return { ok: true, bezelId: frameId, frameIndex };
+    },
+    patchScreenshotStyle: (patch) => {
+      pushHistoryRef.current();
+      patchScreenshotStyleRef.current(patch);
+    },
+    patchScreenshotStyleOnFrame: async (patch, frameIndex) => {
+      pushHistoryRef.current();
+      const next = { ...screenshotStyleRef.current, ...patch };
+      setScreenshotStyle(next);
+      const frame = framesRef.current[frameIndex];
+      const canvas = frame ? canvasMapRef.current[frame.id] : null;
+      if (!canvas) return { ok: false, error: 'no_canvas' };
+      const targets = canvas
+        .getObjects()
+        .filter((o) => o.glintRole === 'framed-screenshot' || o.glintRole === 'screenshot');
+      for (const obj of [...targets]) {
+        await restyleScreenshot(obj, next);
+      }
+      markDirty();
+      return { ok: true, frameIndex, patch };
+    },
+    extractTheme: async () => {
+      await extractThemeRef.current();
+    },
     onDirty: markDirty,
     getMeta: () => ({
       frameCount: framesRef.current.length,
@@ -265,6 +346,36 @@ export default function Editor() {
     const hideCursor = () => {
       clearHide();
       setAgentCursor((c) => ({ ...c, visible: false, busy: false, label: '' }));
+    };
+
+    const moveToUi = (uiTarget, label, busy) => {
+      if (!uiTarget) return false;
+      // Open the matching right-rail tab so the control exists in the DOM.
+      if (uiTarget.startsWith('device-frame:') || uiTarget.startsWith('status-bar-')) {
+        document.querySelector('[data-glint-agent="tab-device"]')?.click();
+      } else if (uiTarget === 'tab-colors' || uiTarget.startsWith('palette:')) {
+        document.querySelector('[data-glint-agent="tab-colors"]')?.click();
+      } else if (uiTarget.startsWith('tab-')) {
+        document.querySelector(`[data-glint-agent="${uiTarget}"]`)?.click();
+      }
+
+      const place = () => {
+        const el = document.querySelector(`[data-glint-agent="${uiTarget}"]`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        const r = el.getBoundingClientRect();
+        setAgentCursor({
+          visible: true,
+          x: r.left + r.width * 0.5,
+          y: r.top + r.height * 0.5,
+          label: label || '',
+          busy: !!busy,
+        });
+        el.classList.add('glint-agent-target');
+        setTimeout(() => el.classList.remove('glint-agent-target'), 700);
+      };
+      requestAnimationFrame(() => requestAnimationFrame(place));
+      return true;
     };
 
     const moveToArtboard = (frameIndex, label, busy) => {
@@ -308,7 +419,9 @@ export default function Editor() {
       }
       if (ev?.phase === 'select' || ev?.phase === 'apply') {
         clearHide();
-        if (typeof ev.frameIndex === 'number') {
+        if (ev.uiTarget) {
+          moveToUi(ev.uiTarget, ev.label || '', true);
+        } else if (typeof ev.frameIndex === 'number') {
           moveToArtboard(ev.frameIndex, ev.label || '', true);
         }
       }
@@ -569,6 +682,7 @@ export default function Editor() {
     },
     [markDirty, setFrames, template],
   );
+  applyPaletteRemapsRef.current = applyPaletteRemaps;
 
   const handleExtractThemeNow = useCallback(async () => {
     const urls = [
@@ -588,6 +702,7 @@ export default function Editor() {
       /* ignore */
     }
   }, [assetLibrary, frames, template, applyPaletteRemaps, pushHistory]);
+  extractThemeRef.current = handleExtractThemeNow;
 
   useEffect(() => {
     if (bridge.screenshots.length > 0) {
@@ -643,41 +758,29 @@ export default function Editor() {
       return next;
     });
   }, [markDirty]);
+  patchScreenshotStyleRef.current = handleScreenshotStyleChange;
 
-  const handleDeviceFrameChange = useCallback(async (nextId) => {
-    const target = getStoreTarget(exportPreset);
-    const frameId = resolveFrameForStore(nextId, target, null);
-    if (nextId != null && frameId !== nextId) return;
-    setDeviceFrame(frameId);
-    markDirty();
-    // Cancel in-flight status-bar / chrome restyles so they can't rebake the old bezel after us.
-    styleApplyGenRef.current += 1;
-    if (styleApplyTimerRef.current) clearTimeout(styleApplyTimerRef.current);
-    if (styleApplyRafRef.current) cancelAnimationFrame(styleApplyRafRef.current);
-
+  /** Apply bezel to one artboard frame. Returns whether anything ran. */
+  const applyBezelToFrameIndex = useCallback(async (frameIndex, frameId) => {
     const board = framesRef.current;
-    for (let i = 0; i < board.length; i++) {
-      const frame = board[i];
-      const canvas = canvasMapRef.current[frame.id];
-      if (!canvas) continue;
+    const frame = board[frameIndex];
+    if (!frame) return false;
+    const canvas = canvasMapRef.current[frame.id];
+    if (!canvas) return false;
 
-      const shotUrl = frame.screenshotUrl;
-      const devices = canvas.getObjects().filter((o) => o.glintRole === 'framed-screenshot');
-      const bare = canvas.getObjects().filter((o) => o.glintRole === 'screenshot');
+    const shotUrl = frame.screenshotUrl;
+    const devices = canvas.getObjects().filter((o) => o.glintRole === 'framed-screenshot');
+    const bare = canvas.getObjects().filter((o) => o.glintRole === 'screenshot');
 
-      try {
-        if (!frameId) {
-          // None - strip every bezel into a styled screenshot.
-          for (const device of [...devices]) {
-            if (!device.glintScreenshotUrl && shotUrl) {
-              device.set({ glintScreenshotUrl: shotUrl });
-            }
-            await stripDeviceFrame(device, screenshotStyleRef.current);
+    try {
+      if (!frameId) {
+        for (const device of [...devices]) {
+          if (!device.glintScreenshotUrl && shotUrl) {
+            device.set({ glintScreenshotUrl: shotUrl });
           }
-          continue;
+          await stripDeviceFrame(device, screenshotStyleRef.current);
         }
-
-        // Apply / swap bezel on framed devices.
+      } else {
         for (const device of [...devices]) {
           if (!device.glintScreenshotUrl && shotUrl) {
             device.set({ glintScreenshotUrl: shotUrl });
@@ -694,8 +797,6 @@ export default function Editor() {
             await replaceDeviceFrame(device, frameId, url, screenshotStyleRef.current);
           }
         }
-
-        // Wrap bare screenshots (after stripping None) back into a bezel.
         for (const shot of [...bare]) {
           if (!shot.glintScreenshotUrl && shotUrl) {
             shot.set({ glintScreenshotUrl: shotUrl });
@@ -707,25 +808,45 @@ export default function Editor() {
             screenshotStyleRef.current,
           );
         }
-      } catch (err) {
-        console.error('Glint: device frame swap failed', frame.id, err);
       }
+    } catch (err) {
+      console.error('Glint: device frame swap failed', frame.id, err);
+      return false;
     }
 
-    // Persist bezel id into slide designs so a later paint keeps the swap.
     if (frameId) {
       setFrames((prev) =>
-        prev.map((f) => {
-          if (!f.design?.layers?.some((l) => l.type === 'device')) return f;
-          const design = {
-            ...f.design,
-            layers: f.design.layers.map((l) =>
-              l.type === 'device' ? { ...l, frame: frameId } : l,
-            ),
+        prev.map((f, i) => {
+          if (i !== frameIndex || !f.design?.layers?.some((l) => l.type === 'device')) return f;
+          return {
+            ...f,
+            design: {
+              ...f.design,
+              layers: f.design.layers.map((l) =>
+                l.type === 'device' ? { ...l, frame: frameId } : l,
+              ),
+            },
           };
-          return { ...f, design };
         }),
       );
+    }
+    return true;
+  }, [setFrames]);
+
+  const handleDeviceFrameChange = useCallback(async (nextId) => {
+    const target = getStoreTarget(exportPreset);
+    const frameId = resolveFrameForStore(nextId, target, null);
+    if (nextId != null && frameId !== nextId) return;
+    setDeviceFrame(frameId);
+    markDirty();
+    // Cancel in-flight status-bar / chrome restyles so they can't rebake the old bezel after us.
+    styleApplyGenRef.current += 1;
+    if (styleApplyTimerRef.current) clearTimeout(styleApplyTimerRef.current);
+    if (styleApplyRafRef.current) cancelAnimationFrame(styleApplyRafRef.current);
+
+    const board = framesRef.current;
+    for (let i = 0; i < board.length; i++) {
+      await applyBezelToFrameIndex(i, frameId);
     }
 
     const live = canvasMapRef.current[framesRef.current[activeIndex]?.id];
@@ -741,7 +862,9 @@ export default function Editor() {
         live.requestRenderAll();
       }
     }
-  }, [activeIndex, exportPreset, markDirty, setFrames]);
+  }, [activeIndex, applyBezelToFrameIndex, exportPreset, markDirty]);
+  setDeviceBezelRef.current = handleDeviceFrameChange;
+  applyBezelToFrameIndexRef.current = applyBezelToFrameIndex;
 
   /** Drop illegal bezels when store size changes (e.g. iPhone → Play TV). */
   useEffect(() => {

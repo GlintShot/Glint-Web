@@ -378,6 +378,7 @@ export default function PropertiesPanel({
             key={tab.id}
             type="button"
             onClick={() => setRightTab(tab.id)}
+            data-glint-agent={`tab-${tab.id}`}
             className={`flex-1 px-1 py-2.5 text-[11px] font-medium transition-colors ${
               rightTab === tab.id
                 ? 'text-glint-accent border-b-2 border-glint-accent'
@@ -430,6 +431,7 @@ export default function PropertiesPanel({
                   type="button"
                   role="switch"
                   aria-checked={!!style.statusBarEnabled}
+                  data-glint-agent="status-bar-toggle"
                   onClick={() => patchStyle({ statusBarEnabled: !style.statusBarEnabled })}
                   className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
                     style.statusBarEnabled ? 'bg-glint-accent' : 'bg-glint-border'
@@ -451,6 +453,7 @@ export default function PropertiesPanel({
                     <button
                       key={opt.id}
                       type="button"
+                      data-glint-agent={`status-bar-theme:${opt.id}`}
                       onClick={() => patchStyle({ statusBarTheme: opt.id })}
                       className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
                         (style.statusBarTheme || 'dark') === opt.id
