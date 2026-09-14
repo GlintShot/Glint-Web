@@ -13,11 +13,13 @@ export function useCopilotSession({
   getWhiteScreenshot,
   updateFrame,
   onDirty,
+  getMeta,
 }) {
   const [ui, setUi] = useState({
     enabled: false,
     paused: true,
     token: null,
+    pairCode: null,
     generation: 0,
     status: null,
   });
@@ -33,11 +35,15 @@ export function useCopilotSession({
     updateFrame,
   };
 
+  const metaRef = useRef(getMeta);
+  metaRef.current = getMeta;
+
   const session = useMemo(
     () =>
       createCopilotSession({
         getCtx: () => ctxRef.current,
         onDirty,
+        getMeta: () => metaRef.current?.() || {},
       }),
     [onDirty],
   );
@@ -48,6 +54,7 @@ export function useCopilotSession({
         enabled: session.enabled,
         paused: session.paused,
         token: session.token,
+        pairCode: session.pairCode,
         generation: session.generation,
         status: event,
       });
@@ -56,7 +63,6 @@ export function useCopilotSession({
     return () => {
       unsub();
       uninstall();
-      session.disable();
     };
   }, [session]);
 
@@ -70,25 +76,17 @@ export function useCopilotSession({
     [session],
   );
   const getEditorState = useCallback(() => session.getEditorState(), [session]);
-
-  /** Demo / smoke: run a short presented sequence on the active frame. */
-  const runDemo = useCallback(async () => {
-    if (!session.enabled) session.enable();
-    if (session.paused) session.resume();
-    const state = await session.getEditorState();
-    const idx = state.state?.activeIndex >= 0 ? state.state.activeIndex : 0;
-    const gen0 = state.generation;
-    await session.dispatch('selectFrame', { frameIndex: idx }, { present: true, expectedGeneration: gen0 });
-    const g1 = session.generation;
-    await session.dispatch('selectDevice', { frameIndex: idx }, { present: true, expectedGeneration: g1 });
-    const device = state.state?.frames?.[idx]?.device;
-    const nextAngle = Math.max(-30, Math.min(30, (device?.angle || 0) - 8));
-    const g2 = session.generation;
-    await session.dispatch(
-      'setDeviceAngle',
-      { frameIndex: idx, degrees: nextAngle },
-      { present: true, expectedGeneration: g2 },
-    );
+  const copyPairCode = useCallback(async () => {
+    const code = session.pairCode;
+    if (!code || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      return false;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      return true;
+    } catch {
+      return false;
+    }
   }, [session]);
 
   return {
@@ -100,7 +98,7 @@ export function useCopilotSession({
     bump,
     dispatch,
     getEditorState,
-    runDemo,
+    copyPairCode,
     session,
   };
 }

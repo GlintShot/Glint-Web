@@ -1,117 +1,117 @@
-import { Bot, Pause, Play, Sparkles, X } from 'lucide-react';
+import { Bot, Copy, Pause, Play, X } from 'lucide-react';
+import { useState } from 'react';
 
 /**
- * Mode 3 Copilot chrome - allow agent, pause/takeover, live status.
+ * Compact Copilot control: Allow → board code + play/pause + close.
  */
 export default function CopilotBar({
   enabled,
   paused,
-  token,
-  generation,
+  pairCode,
   status,
   onEnable,
   onDisable,
   onPause,
   onResume,
-  onDemo,
+  onCopyPair,
 }) {
-  const label = status?.label || (enabled ? (paused ? 'Paused - you have control' : 'Listening for agent…') : null);
+  const [copied, setCopied] = useState(false);
   const busy = status?.phase === 'select' || status?.phase === 'apply';
+  const liveHint = busy ? status?.label : paused ? 'Paused' : 'Live';
+
+  const handleCopy = async () => {
+    const ok = onCopyPair ? await onCopyPair() : false;
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    }
+  };
+
+  if (!enabled) {
+    return (
+      <button
+        type="button"
+        onClick={onEnable}
+        className="pointer-events-auto group inline-flex items-center gap-2 rounded-full border border-glint-border/80 bg-glint-surface/95 backdrop-blur-md pl-1.5 pr-3.5 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:border-glint-accent/50 hover:shadow-[0_8px_30px_rgba(201,162,39,0.18)] transition-all"
+        title="Let your coding agent drive this board with you"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-glint-accent text-glint-text-on-accent shadow-sm">
+          <Bot size={14} strokeWidth={2.25} />
+        </span>
+        <span className="text-[12px] font-semibold tracking-tight text-glint-text">
+          Allow agent
+        </span>
+      </button>
+    );
+  }
 
   return (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-glint-border bg-glint-surface/95 backdrop-blur-md shadow-lg px-2.5 py-1.5 max-w-[min(560px,92vw)]">
+    <div
+      className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-glint-border/80 bg-glint-surface/95 backdrop-blur-md p-1 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+      title={liveHint || 'Copilot'}
+    >
       <span
-        className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${
-          enabled
-            ? paused
-              ? 'bg-glint-surface-2 text-glint-text-secondary'
+        className={`flex h-8 w-8 items-center justify-center rounded-full ${
+          paused
+            ? 'bg-glint-surface-2 text-glint-text-secondary'
+            : busy
+              ? 'bg-glint-accent-muted text-glint-accent animate-pulse'
               : 'bg-glint-accent-muted text-glint-accent'
-            : 'bg-glint-surface-2 text-glint-text-tertiary'
         }`}
-        title="Copilot mode"
+        aria-hidden
       >
-        <Bot size={15} />
+        <Bot size={14} strokeWidth={2.25} />
       </span>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-glint-text-tertiary">
-            Copilot
-          </span>
-          {enabled ? (
-            <span className="text-[10px] tabular-nums text-glint-text-tertiary">gen {generation}</span>
-          ) : null}
-        </div>
-        <p className="text-[11px] text-glint-text truncate">
-          {!enabled
-            ? 'Manual mode - allow an agent to share this board'
-            : busy
-              ? label
-              : label}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        {!enabled ? (
-          <button
-            type="button"
-            onClick={onEnable}
-            className="inline-flex items-center gap-1 rounded-lg bg-glint-accent text-glint-text-on-accent px-2.5 py-1 text-[11px] font-medium hover:bg-glint-accent-hover"
-          >
-            <Sparkles size={12} />
-            Allow agent
-          </button>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="inline-flex h-8 min-w-[4.5rem] items-center justify-center gap-1.5 rounded-full px-2.5 font-mono text-[12px] font-bold tracking-[0.14em] text-glint-text hover:bg-glint-surface-2 transition-colors"
+        title="Board ID - copy and give this to your agent"
+      >
+        {copied ? (
+          <span className="tracking-normal text-glint-accent text-[11px] font-semibold">Copied</span>
         ) : (
           <>
-            {paused ? (
-              <button
-                type="button"
-                onClick={onResume}
-                className="inline-flex items-center gap-1 rounded-lg border border-glint-border px-2 py-1 text-[11px] text-glint-text-secondary hover:bg-glint-surface-2 hover:text-glint-text"
-                title="Resume agent"
-              >
-                <Play size={12} />
-                Resume
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onPause}
-                className="inline-flex items-center gap-1 rounded-lg border border-glint-border px-2 py-1 text-[11px] text-glint-text-secondary hover:bg-glint-surface-2 hover:text-glint-text"
-                title="Pause - take over"
-              >
-                <Pause size={12} />
-                Pause
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onDemo}
-              className="rounded-lg border border-glint-border px-2 py-1 text-[11px] text-glint-text-secondary hover:bg-glint-surface-2 hover:text-glint-text"
-              title="Run a short presented demo on the active frame"
-            >
-              Demo
-            </button>
-            <button
-              type="button"
-              onClick={onDisable}
-              className="p-1 rounded-lg text-glint-text-tertiary hover:bg-glint-surface-2 hover:text-glint-text"
-              title="Disable Copilot"
-            >
-              <X size={14} />
-            </button>
+            <span>{pairCode}</span>
+            <Copy size={11} className="opacity-50" />
           </>
         )}
-      </div>
+      </button>
 
-      {enabled && token ? (
-        <span
-          className="hidden sm:inline text-[9px] font-mono text-glint-text-tertiary truncate max-w-[72px]"
-          title={`Pair token: ${token}`}
-        >
-          {token.slice(0, 8)}
-        </span>
-      ) : null}
+      <span className="mx-0.5 h-4 w-px bg-glint-border/80" aria-hidden />
+
+      {paused ? (
+        <IconBtn onClick={onResume} title="Resume agent" label="Play">
+          <Play size={14} fill="currentColor" />
+        </IconBtn>
+      ) : (
+        <IconBtn onClick={onPause} title="Pause - you take over" label="Pause">
+          <Pause size={14} fill="currentColor" />
+        </IconBtn>
+      )}
+
+      <IconBtn onClick={onDisable} title="Disconnect agent" label="Close" danger>
+        <X size={14} strokeWidth={2.25} />
+      </IconBtn>
     </div>
+  );
+}
+
+function IconBtn({ onClick, title, label, children, danger = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={title}
+      className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+        danger
+          ? 'text-glint-text-tertiary hover:bg-red-500/10 hover:text-red-500'
+          : 'text-glint-text-secondary hover:bg-glint-surface-2 hover:text-glint-text'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

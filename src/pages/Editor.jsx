@@ -228,6 +228,10 @@ export default function Editor() {
     getWhiteScreenshot,
     updateFrame,
     onDirty: markDirty,
+    getMeta: () => ({
+      frameCount: framesRef.current.length,
+      templateId: template?.id || null,
+    }),
   });
 
   useEffect(() => {
@@ -1229,16 +1233,13 @@ export default function Editor() {
             <CopilotBar
               enabled={copilot.enabled}
               paused={copilot.paused}
-              token={copilot.token}
-              generation={copilot.generation}
+              pairCode={copilot.pairCode}
               status={copilot.status}
               onEnable={copilot.enable}
               onDisable={copilot.disable}
               onPause={copilot.pause}
               onResume={copilot.resume}
-              onDemo={() => {
-                void copilot.runDemo();
-              }}
+              onCopyPair={copilot.copyPairCode}
             />
             <div className="pointer-events-auto flex items-center gap-0.5 bg-glint-surface/95 backdrop-blur-md border border-glint-border rounded-xl px-1.5 py-1 shadow-2xl">
             <ToolBtn onClick={handleAddText} title="Add text (T)">
