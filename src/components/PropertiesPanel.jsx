@@ -390,7 +390,13 @@ export default function PropertiesPanel({
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+      <div
+        className={
+          rightTab === 'graphics'
+            ? 'flex-1 min-h-0 flex flex-col overflow-hidden p-3 gap-4'
+            : 'flex-1 min-h-0 overflow-y-auto p-3 space-y-4 glint-scrollbar'
+        }
+      >
         {rightTab === 'device' && (
           <>
             <FrameSelector selected={frame} onChange={onFrameChange} store={store} />
@@ -523,6 +529,7 @@ export default function PropertiesPanel({
           <>
             <GraphicPicker onInsert={handleInsertGraphic} />
             {isGraphic && (
+              <div className="shrink-0">
               <Section title="Selected graphic colors">
                 <CField label="Fill A" value={graphicFills.a || '#FF6B4A'} onChange={(v) => handleGraphicFill('a', v)} />
                 <CField label="Fill B" value={graphicFills.b || '#FFD166'} onChange={(v) => handleGraphicFill('b', v)} />
@@ -542,6 +549,7 @@ export default function PropertiesPanel({
                   />
                 </label>
               </Section>
+              </div>
             )}
           </>
         )}

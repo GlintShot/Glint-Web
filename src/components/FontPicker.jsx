@@ -212,7 +212,7 @@ export default function FontPicker({ selected, onChange, label = 'Font' }) {
               )}
             </div>
 
-            <div className="max-h-56 overflow-y-auto p-1.5 hide-scrollbar">
+            <div className="max-h-56 overflow-y-auto p-1.5 glint-scrollbar">
               {showCatalogLoading ? (
                 <div className="flex items-center justify-center gap-2 px-2 py-8 text-xs text-glint-text-tertiary">
                   <Loader2 size={14} className="animate-spin" />

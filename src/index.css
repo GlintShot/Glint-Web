@@ -229,7 +229,7 @@ select:disabled {
   color: var(--glint-text);
 }
 
-/* Hide scrollbar chrome (developers know they can scroll) */
+/* Hide scrollbar chrome (board pan - no chrome needed) */
 .hide-scrollbar,
 .frame-board-scroll {
   scrollbar-width: none;
@@ -239,6 +239,29 @@ select:disabled {
 .hide-scrollbar::-webkit-scrollbar,
 .frame-board-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* Thin Glint scrollbar for panel lists (icons, fonts, sidebars) */
+.glint-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--glint-accent) 45%, transparent) transparent;
+}
+.glint-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.glint-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.glint-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--glint-accent) 40%, transparent);
+  border-radius: 999px;
+}
+.glint-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--glint-accent) 70%, transparent);
+}
+.glint-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Frames sidebar - news-ticker scroll for long layer labels */

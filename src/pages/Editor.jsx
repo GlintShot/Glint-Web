@@ -1538,7 +1538,7 @@ export default function Editor() {
                 </button>
               ))}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 hide-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 glint-scrollbar">
               {leftTab === 'templates' && (
                 <TemplateGallery onChange={handleSelectTemplate} activeStore={exportPreset} />
               )}

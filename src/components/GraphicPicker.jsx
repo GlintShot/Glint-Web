@@ -26,19 +26,33 @@ function GraphicTile({ item, onInsert }) {
   );
 }
 
+function EmptySearch({ query }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 py-10 px-3 text-center">
+      <p className="text-sm font-medium text-glint-text">No matches</p>
+      <p className="text-[11px] text-glint-text-tertiary">
+        Nothing for “{query}” in this tab
+      </p>
+    </div>
+  );
+}
+
 export default function GraphicPicker({ onInsert }) {
   const [tab, setTab] = useState('icons');
   const [query, setQuery] = useState('');
 
   const q = query.toLowerCase();
 
-  const filteredIcons = ICONS.filter((g) => g.label.toLowerCase().includes(q));
-  const filteredBrands = BRANDS.filter((g) => g.label.toLowerCase().includes(q));
-  const filteredShapes = SHAPES_SVG.filter((g) => g.label.toLowerCase().includes(q));
+  const lists = {
+    icons: ICONS.filter((g) => g.label.toLowerCase().includes(q)),
+    brands: BRANDS.filter((g) => g.label.toLowerCase().includes(q)),
+    shapes: SHAPES_SVG.filter((g) => g.label.toLowerCase().includes(q)),
+  };
+  const items = lists[tab] || [];
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-2">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
+      <div className="mb-2 shrink-0">
         <input
           type="text"
           placeholder="Search..."
@@ -48,7 +62,7 @@ export default function GraphicPicker({ onInsert }) {
         />
       </div>
 
-      <div className="flex border-b border-glint-border mb-2">
+      <div className="flex border-b border-glint-border mb-2 shrink-0">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -65,26 +79,12 @@ export default function GraphicPicker({ onInsert }) {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-hidden">
-        {tab === 'icons' && (
-          <div className="grid grid-cols-4 gap-1.5">
-            {filteredIcons.map((g) => (
-              <GraphicTile key={g.id} item={g} onInsert={onInsert} />
-            ))}
-          </div>
-        )}
-
-        {tab === 'brands' && (
-          <div className="grid grid-cols-4 gap-1.5">
-            {filteredBrands.map((g) => (
-              <GraphicTile key={g.id} item={g} onInsert={onInsert} />
-            ))}
-          </div>
-        )}
-
-        {tab === 'shapes' && (
-          <div className="grid grid-cols-4 gap-1.5">
-            {filteredShapes.map((g) => (
+      <div className="flex-1 min-h-0 overflow-y-auto glint-scrollbar pr-0.5">
+        {items.length === 0 ? (
+          <EmptySearch query={query} />
+        ) : (
+          <div className="grid grid-cols-4 gap-1.5 pb-1">
+            {items.map((g) => (
               <GraphicTile key={g.id} item={g} onInsert={onInsert} />
             ))}
           </div>
