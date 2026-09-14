@@ -19,6 +19,7 @@ export default function FrameBoard({
   onDelete,
   onMove,
   onCanvasReady,
+  onPainted,
   onDeviceContextMenu,
   canvasWidth = 1080,
   canvasHeight = 1920,
@@ -183,6 +184,7 @@ export default function FrameBoard({
                   themes={themes}
                   editable={selected}
                   onCanvasReady={onCanvasReady}
+                  onPainted={onPainted}
                   onDeviceContextMenu={onDeviceContextMenu}
                   paintKey={frame.fabricRestoreKey || frame.design?.id || 'nodesign'}
                 />

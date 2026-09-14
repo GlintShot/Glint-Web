@@ -54,6 +54,8 @@ export default function FrameCanvas({
   themes = {},
   editable = true,
   onCanvasReady,
+  /** Fires after design/fabric paint lands (objects exist for bezel sync). */
+  onPainted,
   onDeviceContextMenu,
   paintKey,
 }) {
@@ -63,6 +65,8 @@ export default function FrameCanvas({
   const themesRef = useRef(themes);
   const editableRef = useRef(editable);
   const menuRef = useRef(onDeviceContextMenu);
+  const onPaintedRef = useRef(onPainted);
+  onPaintedRef.current = onPainted;
   const screenshotRef = useRef(screenshotUrl);
   const designRef = useRef(design);
   const scaleRef = useRef(Math.max(0.05, displayScale));
@@ -258,11 +262,12 @@ export default function FrameCanvas({
           if (ac.signal.aborted) return;
           setCanvasPaintVisibility(canvas, true);
           setLoaded(true);
+          onPaintedRef.current?.(frameId, canvas);
         });
       });
     })();
     return () => ac.abort();
-  }, [fabricJson, canvasWidth, canvasHeight, paintKey, screenshotUrl]);
+  }, [fabricJson, canvasWidth, canvasHeight, paintKey, screenshotUrl, frameId]);
 
   return (
     <div

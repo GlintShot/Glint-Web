@@ -215,39 +215,51 @@ export default function Editor() {
           gesturing = false;
         });
       }
-      // Sidebar Device picker: mirror this artboard's bezel when it is the active frame.
-      const activeId = framesRef.current[activeIndexRef.current]?.id;
-      if (frameId === activeId) {
-        const device = canvas.getObjects?.().find((o) => o.glintRole === 'framed-screenshot');
-        if (device?.glintFrameId) setDeviceFrame(device.glintFrameId);
-        else if (canvas.getObjects?.().some((o) => o.glintRole === 'screenshot')) {
-          setDeviceFrame(null);
-        }
+      // Sidebar Device: re-sync when the active artboard's canvas mounts
+      // (objects may still be empty — paint callback finishes the job).
+      if (frameId === framesRef.current[activeIndexRef.current]?.id) {
+        syncDeviceFrameFromActiveRef.current?.();
       }
     } else {
       delete canvasMapRef.current[frameId];
     }
   }, []);
 
-  /** Keep Design → Device highlight in sync with the active artboard's live bezel. */
+  /**
+   * Keep Design → Device highlight aligned with the active artboard.
+   * Prefer live canvas bezel; if paint hasn't finished yet, use design/template.
+   */
   const syncDeviceFrameFromActive = useCallback(() => {
     const frame = framesRef.current[activeIndexRef.current];
     if (!frame) return;
-    const canvas = canvasMapRef.current[frame.id];
-    if (!canvas?.getObjects) return;
-    const device = canvas.getObjects().find((o) => o.glintRole === 'framed-screenshot');
-    if (device?.glintFrameId) {
-      setDeviceFrame((prev) => (prev === device.glintFrameId ? prev : device.glintFrameId));
-      return;
+    const objs = canvasMapRef.current[frame.id]?.getObjects?.() ?? [];
+    const framed = objs.find((o) => o.glintRole === 'framed-screenshot');
+    let next;
+    if (framed?.glintFrameId) {
+      next = framed.glintFrameId;
+    } else if (objs.some((o) => o.glintRole === 'screenshot')) {
+      next = null; // user cleared bezel
+    } else {
+      // Empty / still painting: design layer, then template default
+      next =
+        frame.design?.layers?.find((l) => l.type === 'device')?.frame
+        || templateRef.current?.device?.frame
+        || null;
     }
-    if (canvas.getObjects().some((o) => o.glintRole === 'screenshot')) {
-      setDeviceFrame((prev) => (prev === null ? prev : null));
-    }
+    setDeviceFrame((prev) => (prev === next ? prev : next));
   }, []);
+  const syncDeviceFrameFromActiveRef = useRef(syncDeviceFrameFromActive);
+  syncDeviceFrameFromActiveRef.current = syncDeviceFrameFromActive;
+
+  const handleCanvasPainted = useCallback((frameId) => {
+    if (frameId === framesRef.current[activeIndexRef.current]?.id) {
+      syncDeviceFrameFromActive();
+    }
+  }, [syncDeviceFrameFromActive]);
 
   useEffect(() => {
     syncDeviceFrameFromActive();
-  }, [activeIndex, frames, syncDeviceFrameFromActive]);
+  }, [activeIndex, frames, template, syncDeviceFrameFromActive]);
 
   useEffect(() => {
     const id = frames[activeIndex]?.id;
@@ -1405,6 +1417,7 @@ export default function Editor() {
             onDelete={deleteFrame}
             onMove={moveFrame}
             onCanvasReady={handleCanvasReady}
+            onPainted={handleCanvasPainted}
             onDeviceContextMenu={handleDeviceContextMenu}
             canvasWidth={canvasW}
             canvasHeight={canvasH}
