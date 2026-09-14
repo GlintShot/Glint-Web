@@ -60,6 +60,7 @@ import { captureEditorSnapshot, createEditorHistory } from '../hooks/editorHisto
 import { parseGlint, isGlintFile } from '../utils/projectPack';
 import CopyToFrameModal from '../components/CopyToFrameModal';
 import CopilotBar from '../components/CopilotBar';
+import AgentCursor from '../components/AgentCursor';
 import { copySelectionToFrame } from '../utils/copyObjectToFrame';
 import { useCopilotSession } from '../hooks/useCopilotSession';
 
@@ -242,6 +243,57 @@ export default function Editor() {
       copilotApplyingRef.current = copilot.session.applying;
     });
   }, [copilot]);
+
+  const [agentCursor, setAgentCursor] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    label: '',
+    busy: false,
+  });
+
+  useEffect(() => {
+    const moveToFrame = (frameIndex, label, busy) => {
+      if (frameIndex == null || frameIndex < 0) return;
+      const el = document.querySelector(`[data-frame-index="${frameIndex}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      const r = el.getBoundingClientRect();
+      setAgentCursor({
+        visible: true,
+        x: r.left + r.width * 0.55,
+        y: r.top + r.height * 0.42,
+        label: label || '',
+        busy: !!busy,
+      });
+    };
+
+    return copilot.session.subscribe((ev) => {
+      if (!copilot.session.enabled) {
+        setAgentCursor((c) => ({ ...c, visible: false, busy: false }));
+        return;
+      }
+      if (ev?.phase === 'session' && ev.enabled === false) {
+        setAgentCursor((c) => ({ ...c, visible: false, busy: false }));
+        return;
+      }
+      if (ev?.phase === 'done' && ev.op === 'matchDeviceTransform') {
+        setAgentCursor((c) => ({
+          ...c,
+          busy: false,
+          label: ev.label || 'Done',
+        }));
+        return;
+      }
+      if (typeof ev?.frameIndex === 'number') {
+        moveToFrame(
+          ev.frameIndex,
+          ev.label || '',
+          ev.phase === 'select' || ev.phase === 'apply',
+        );
+      }
+    });
+  }, [copilot.session, copilot.enabled]);
 
   const loadTemplate = (t) => {
     setTemplate(t);
@@ -1221,6 +1273,14 @@ export default function Editor() {
                 ? copilot.status.frameIndex
                 : null
             }
+          />
+
+          <AgentCursor
+            visible={agentCursor.visible && copilot.enabled}
+            x={agentCursor.x}
+            y={agentCursor.y}
+            label={agentCursor.label}
+            busy={agentCursor.busy}
           />
 
           <div

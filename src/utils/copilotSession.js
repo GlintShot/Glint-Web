@@ -234,7 +234,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     async dispatch(op, args = {}, opts = {}) {
       const {
         present = true,
-        paceMs = 380,
+        paceMs = 420,
         expectedGeneration = null,
         token: callerToken = null,
         pairCode: callerPair = null,
@@ -258,70 +258,223 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       const ctx = getCtx?.();
       if (!ctx) return { ok: false, error: 'no_ctx' };
 
-      const label = describeOp(op, args);
-      applying = true;
+      // Present match across frames with the agent cursor (not a silent bulk apply).
+      if (op === 'matchDeviceTransform' && present) {
+        return runBoardMatch(ctx, args, { paceMs });
+      }
+
+      return runPresentedOp(ctx, op, args, { present, paceMs });
+    },
+
+    /**
+     * Match active (or source) frame transform across the board with cursor travel.
+     * Shared knowledge: one source → all other frames, left to right.
+     */
+    async boardPass(opts = {}) {
+      const state = await api.getEditorState();
+      if (!state.ok) return state;
+      const sourceIndex =
+        opts.sourceIndex != null
+          ? opts.sourceIndex
+          : state.state?.activeIndex >= 0
+            ? state.state.activeIndex
+            : 0;
+      return api.dispatch(
+        'matchDeviceTransform',
+        {
+          sourceIndex,
+          targetIndexes: opts.targetIndexes ?? null,
+        },
+        {
+          present: true,
+          paceMs: opts.paceMs ?? 440,
+          token: opts.token,
+          pairCode: opts.pairCode ?? pairCode,
+          expectedGeneration: opts.expectedGeneration ?? generation,
+        },
+      );
+    },
+  };
+
+  async function runPresentedOp(ctx, op, args, { present, paceMs }) {
+    const label = describeOp(op, args);
+    const frameIndex = args.frameIndex ?? args.index ?? args.sourceIndex;
+    applying = true;
+    emit({
+      phase: 'select',
+      op,
+      args,
+      label,
+      frameIndex,
+      present,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+
+    if (present && paceMs > 0) await sleep(paceMs);
+
+    if (paused) {
+      applying = false;
+      emit({ phase: 'aborted', op, reason: 'paused', at: Date.now() });
+      return { ok: false, error: 'paused' };
+    }
+
+    emit({
+      phase: 'apply',
+      op,
+      args,
+      label,
+      frameIndex,
+      present,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+
+    let result;
+    try {
+      result = await runCanvasOp(ctx, op, args);
+    } catch (err) {
+      applying = false;
+      emit({ phase: 'error', op, error: String(err?.message || err), at: Date.now() });
+      return { ok: false, error: 'op_threw', detail: String(err?.message || err) };
+    }
+
+    if (result?.ok && op !== 'getEditorState' && op !== 'selectFrame' && op !== 'selectDevice') {
+      generation += 1;
+      onDirty?.();
+      publishRegistry();
+    }
+
+    applying = false;
+    emit({
+      phase: 'done',
+      op,
+      args,
+      label,
+      result,
+      frameIndex,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+
+    return { ...result, generation, pairCode };
+  }
+
+  async function runBoardMatch(ctx, args, { paceMs }) {
+    const sourceIndex = Math.max(0, Math.round(args.sourceIndex ?? 0));
+    applying = true;
+    emit({
+      phase: 'select',
+      op: 'matchDeviceTransform',
+      label: `Read Frame ${sourceIndex + 1} as source`,
+      frameIndex: sourceIndex,
+      present: true,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+
+    const srcSel = await runCanvasOp(ctx, 'selectDevice', { frameIndex: sourceIndex });
+    if (!srcSel.ok) {
+      applying = false;
+      emit({ phase: 'error', op: 'matchDeviceTransform', error: srcSel.error, at: Date.now() });
+      return { ...srcSel, generation, pairCode };
+    }
+    if (paceMs > 0) await sleep(paceMs);
+    if (paused) {
+      applying = false;
+      emit({ phase: 'aborted', op: 'matchDeviceTransform', reason: 'paused', at: Date.now() });
+      return { ok: false, error: 'paused' };
+    }
+
+    const scalePct = srcSel.scalePct;
+    const angle = srcSel.angle;
+    const frames = ctx.getFrames?.() || [];
+    const targets = (args.targetIndexes == null
+      ? frames.map((_, i) => i).filter((i) => i !== sourceIndex)
+      : args.targetIndexes
+    ).map((i) => Math.round(i)).filter((i) => i !== sourceIndex && i >= 0 && i < frames.length);
+
+    // Left-to-right board order so the cursor walks each frame in sequence.
+    targets.sort((a, b) => a - b);
+
+    const applied = [];
+    for (const ti of targets) {
+      if (paused) {
+        applying = false;
+        emit({ phase: 'aborted', op: 'matchDeviceTransform', reason: 'paused', at: Date.now() });
+        return { ok: false, error: 'paused', applied, generation, pairCode };
+      }
+
       emit({
         phase: 'select',
-        op,
-        args,
-        label,
-        frameIndex: args.frameIndex ?? args.index ?? args.sourceIndex,
-        present,
+        op: 'matchDeviceTransform',
+        label: `Frame ${ti + 1} ← match`,
+        frameIndex: ti,
+        present: true,
         generation,
         pairCode,
         at: Date.now(),
       });
-
-      if (present && paceMs > 0) await sleep(paceMs);
-
-      if (paused) {
-        applying = false;
-        emit({ phase: 'aborted', op, reason: 'paused', at: Date.now() });
-        return { ok: false, error: 'paused' };
-      }
+      await runCanvasOp(ctx, 'selectFrame', { frameIndex: ti });
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.55));
 
       emit({
         phase: 'apply',
-        op,
-        args,
-        label,
-        frameIndex: args.frameIndex ?? args.index ?? args.sourceIndex,
-        present,
+        op: 'setDeviceScale',
+        label: `Frame ${ti + 1} scale ${scalePct}%`,
+        frameIndex: ti,
+        present: true,
         generation,
         pairCode,
         at: Date.now(),
       });
+      const scaleRes = await runCanvasOp(ctx, 'setDeviceScale', { frameIndex: ti, pct: scalePct });
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.45));
 
-      let result;
-      try {
-        result = await runCanvasOp(ctx, op, args);
-      } catch (err) {
-        applying = false;
-        emit({ phase: 'error', op, error: String(err?.message || err), at: Date.now() });
-        return { ok: false, error: 'op_threw', detail: String(err?.message || err) };
-      }
-
-      if (result?.ok && op !== 'getEditorState' && op !== 'selectFrame' && op !== 'selectDevice') {
-        generation += 1;
-        onDirty?.();
-        publishRegistry();
-      }
-
-      applying = false;
       emit({
-        phase: 'done',
-        op,
-        args,
-        label,
-        result,
+        phase: 'apply',
+        op: 'setDeviceAngle',
+        label: `Frame ${ti + 1} rotate ${angle}°`,
+        frameIndex: ti,
+        present: true,
         generation,
         pairCode,
         at: Date.now(),
       });
+      const angleRes = await runCanvasOp(ctx, 'setDeviceAngle', { frameIndex: ti, degrees: angle });
+      if (scaleRes.ok && angleRes.ok) {
+        applied.push({ frameIndex: ti, scalePct, angle });
+      }
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.35));
+    }
 
-      return { ...result, generation, pairCode };
-    },
-  };
+    generation += 1;
+    onDirty?.();
+    publishRegistry();
+    applying = false;
+    const result = {
+      ok: true,
+      sourceIndex,
+      scalePct,
+      angle,
+      applied,
+    };
+    emit({
+      phase: 'done',
+      op: 'matchDeviceTransform',
+      label: `Matched ${applied.length} frames from Frame ${sourceIndex + 1}`,
+      result,
+      frameIndex: sourceIndex,
+      generation,
+      pairCode,
+      at: Date.now(),
+    });
+    return { ...result, generation, pairCode };
+  }
 
   return api;
 }
@@ -381,6 +534,8 @@ export function installCopilotBridge(session) {
     getState: () => session.getState(),
     getEditorState: () => session.getEditorState(),
     dispatch: (op, args, opts) => session.dispatch(op, args, opts),
+    /** Board pass: cursor walks every frame; shared transform from source. */
+    boardPass: (opts) => session.boardPass(opts),
     ops: () => session.ops,
   };
 

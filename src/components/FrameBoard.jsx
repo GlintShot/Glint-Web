@@ -108,6 +108,7 @@ export default function FrameBoard({
             <div
               key={frame.id}
               data-frame-column
+              data-frame-index={i}
               className={`relative flex flex-col items-center shrink-0 group ${
                 selected ? 'cursor-default' : 'cursor-pointer'
               }`}
