@@ -444,10 +444,11 @@ select:disabled {
   }
 }
 
-/* Graphic tiles - grayscale preserves contrast between fills/strokes. */
+/* Graphic tiles: SVGs are near-black (currentColor as img). Brightness alone
+   cannot lighten pure black - invert for dark UI chrome. */
 .graphic-tile img {
-  filter: grayscale(1) brightness(0.3);
+  filter: grayscale(1) brightness(0.35);
 }
 [data-theme="dark"] .graphic-tile img {
-  filter: grayscale(1) brightness(2.0);
+  filter: grayscale(1) invert(1) brightness(0.95);
 }
