@@ -372,14 +372,14 @@ select:disabled {
   top: 0;
   left: 0;
   will-change: transform;
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.09s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .glint-agent-cursor-core {
   position: relative;
   filter: drop-shadow(0 10px 18px rgba(201, 162, 39, 0.35));
 }
 .glint-agent-cursor-core.is-busy {
-  animation: glint-agent-tap 0.5s ease-in-out infinite;
+  animation: glint-agent-tap 0.22s ease-in-out infinite;
 }
 .glint-agent-cursor-glow {
   position: absolute;
@@ -399,7 +399,7 @@ select:disabled {
   height: 16px;
   border-radius: 999px;
   border: 1.5px solid rgba(201, 162, 39, 0.5);
-  animation: glint-agent-ring 1.15s ease-out infinite;
+  animation: glint-agent-ring 0.55s ease-out infinite;
 }
 .glint-agent-cursor-label {
   position: absolute;

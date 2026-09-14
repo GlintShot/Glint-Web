@@ -15,6 +15,9 @@ import {
 const CHANNEL = 'glint-copilot';
 /** Per-tab: survive reload/HMR until user hits Close on Copilot. */
 const PERSIST_KEY = 'glint.copilot.tab.v1';
+/** Default telepresence pace - snappy, still readable. */
+const DEFAULT_PACE_MS = 90;
+const DEFAULT_BOARD_PACE_MS = 100;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -304,7 +307,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     async dispatch(op, args = {}, opts = {}) {
       const {
         present = true,
-        paceMs = 420,
+        paceMs = DEFAULT_PACE_MS,
         expectedGeneration = null,
         token: callerToken = null,
         pairCode: callerPair = null,
@@ -332,31 +335,57 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
       if (op === 'matchDeviceTransform' && present) {
         return runBoardMatch(ctx, args, { paceMs });
       }
-      // Board-wide bezel / chrome: sidebar first, then one artboard at a time under the cursor.
+      // Board-wide bezel / chrome: real sidebar click, then zip across artboards under the cursor.
       if (op === 'setDeviceBezel' && present && args.frameIndex == null) {
+        const bezelKey = args.bezelId ?? args.frameId ?? args.id ?? 'none';
         return runPresentedBoardWalk(ctx, {
           op,
           args,
           paceMs,
-          uiTarget: `device-frame:${args.bezelId ?? args.frameId ?? args.id ?? 'none'}`,
+          uiSteps: [{ uiTarget: `device-frame:${bezelKey}`, uiClick: true }],
           uiLabel: describeOp(op, args),
-          perFrame: (frameIndex) => runCanvasOp(ctx, 'setDeviceBezel', { ...args, frameIndex }),
+          // Sidebar FrameSelector click applies the bezel for real; frames are a fast visual pass.
+          applyViaUi: true,
+          perFrame: async (frameIndex) => {
+            await runCanvasOp(ctx, 'selectFrame', { frameIndex });
+            return { ok: true, frameIndex };
+          },
         });
       }
       if (op === 'setScreenshotStyle' && present && args.frameIndex == null) {
         const theme = args.statusBarTheme || args.patch?.statusBarTheme;
-        const uiTarget = theme
-          ? `status-bar-theme:${theme}`
-          : args.statusBarEnabled != null || args.patch?.statusBarEnabled != null
-            ? 'status-bar-toggle'
-            : 'tab-device';
+        const enabled = args.statusBarEnabled ?? args.patch?.statusBarEnabled;
+        const uiSteps = [];
+        if (enabled === true) {
+          uiSteps.push({
+            uiTarget: 'status-bar-toggle',
+            uiClick: true,
+            onlyIfAriaChecked: 'false',
+          });
+        } else if (enabled === false) {
+          uiSteps.push({
+            uiTarget: 'status-bar-toggle',
+            uiClick: true,
+            onlyIfAriaChecked: 'true',
+          });
+        }
+        if (theme) {
+          uiSteps.push({ uiTarget: `status-bar-theme:${theme}`, uiClick: true });
+        }
+        if (!uiSteps.length) {
+          uiSteps.push({ uiTarget: 'tab-device', uiClick: true });
+        }
         return runPresentedBoardWalk(ctx, {
           op,
           args,
           paceMs,
-          uiTarget,
+          uiSteps,
           uiLabel: describeOp(op, args),
-          perFrame: (frameIndex) => runCanvasOp(ctx, 'setScreenshotStyle', { ...args, frameIndex }),
+          applyViaUi: true,
+          perFrame: async (frameIndex) => {
+            await runCanvasOp(ctx, 'selectFrame', { frameIndex });
+            return { ok: true, frameIndex };
+          },
         });
       }
       if (op === 'remapColors' && present && args.frameIndex == null) {
@@ -364,11 +393,13 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
           op,
           args,
           paceMs,
-          uiTarget: 'tab-colors',
+          uiSteps: [{ uiTarget: 'tab-colors', uiClick: true }],
           uiLabel: describeOp(op, args),
-          // Color remap is global; walk artboards under the cursor after one apply.
           beforeWalk: () => runCanvasOp(ctx, 'remapColors', args),
-          perFrame: async () => ({ ok: true }),
+          perFrame: async (frameIndex) => {
+            await runCanvasOp(ctx, 'selectFrame', { frameIndex });
+            return { ok: true, frameIndex };
+          },
         });
       }
 
@@ -396,7 +427,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
         },
         {
           present: true,
-          paceMs: opts.paceMs ?? 440,
+          paceMs: opts.paceMs ?? DEFAULT_BOARD_PACE_MS,
           token: opts.token,
           pairCode: opts.pairCode ?? pairCode,
           expectedGeneration: opts.expectedGeneration ?? generation,
@@ -410,27 +441,34 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
     args,
     paceMs,
     uiTarget,
+    uiSteps,
     uiLabel,
     beforeWalk,
     perFrame,
+    applyViaUi = false,
   }) {
     applying = true;
     const frames = ctx.getFrames?.() || [];
     const count = frames.length;
+    const steps = Array.isArray(uiSteps) && uiSteps.length
+      ? uiSteps
+      : uiTarget
+        ? [{ uiTarget, uiClick: !!applyViaUi }]
+        : [];
 
-    if (uiTarget) {
+    for (const step of steps) {
       emit({
         phase: 'select',
         op,
         args,
         label: uiLabel || describeOp(op, args),
-        uiTarget,
+        uiTarget: step.uiTarget,
         present: true,
         generation,
         pairCode,
         at: Date.now(),
       });
-      if (paceMs > 0) await sleep(paceMs);
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.55));
       if (paused) {
         applying = false;
         emit({ phase: 'aborted', op, reason: 'paused', at: Date.now() });
@@ -441,13 +479,16 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
         op,
         args,
         label: uiLabel || describeOp(op, args),
-        uiTarget,
+        uiTarget: step.uiTarget,
+        uiClick: step.uiClick !== false,
+        onlyIfAriaChecked: step.onlyIfAriaChecked,
         present: true,
         generation,
         pairCode,
         at: Date.now(),
       });
-      if (paceMs > 0) await sleep(Math.round(paceMs * 0.4));
+      // Let React handle the real control click before moving on.
+      if (paceMs > 0) await sleep(Math.max(40, Math.round(paceMs * 0.5)));
     }
 
     let prelude = { ok: true };
@@ -485,8 +526,7 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
         pairCode,
         at: Date.now(),
       });
-      await runCanvasOp(ctx, 'selectFrame', { frameIndex });
-      if (paceMs > 0) await sleep(Math.round(paceMs * 0.45));
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.35));
 
       emit({
         phase: 'apply',
@@ -509,15 +549,20 @@ export function createCopilotSession({ getCtx, onDirty, getMeta } = {}) {
         return { ok: false, error: 'op_threw', detail: String(err?.message || err), applied };
       }
       if (result?.ok) applied.push({ frameIndex, ...result });
-      if (paceMs > 0) await sleep(Math.round(paceMs * 0.35));
+      if (paceMs > 0) await sleep(Math.round(paceMs * 0.25));
     }
 
-    generation += 1;
-    onDirty?.();
-    persist();
+    if (!applyViaUi) {
+      generation += 1;
+      onDirty?.();
+    } else {
+      // UI click already mutated; still advance generation so agents re-read state.
+      generation += 1;
+      persist();
+    }
     publishRegistry();
     applying = false;
-    const result = { ok: true, applied, ...(prelude?.ok ? {} : { prelude }) };
+    const result = { ok: true, applied, applyViaUi, ...(prelude?.ok ? {} : { prelude }) };
     emit({
       phase: 'done',
       op,

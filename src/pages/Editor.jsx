@@ -360,8 +360,10 @@ export default function Editor() {
       setAgentCursor((c) => ({ ...c, visible: false, busy: false, label: '' }));
     };
 
-    const moveToUi = (uiTarget, label, busy) => {
+    const moveToUi = (uiTarget, label, busy, opts = {}) => {
       if (!uiTarget) return false;
+      const { click = false, onlyIfAriaChecked = null } = opts;
+
       // Open the matching right-rail tab so the control exists in the DOM.
       if (uiTarget.startsWith('device-frame:') || uiTarget.startsWith('status-bar-')) {
         document.querySelector('[data-glint-agent="tab-device"]')?.click();
@@ -374,7 +376,7 @@ export default function Editor() {
       const place = () => {
         const el = document.querySelector(`[data-glint-agent="${uiTarget}"]`);
         if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        el.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' });
         const r = el.getBoundingClientRect();
         setAgentCursor({
           visible: true,
@@ -384,8 +386,23 @@ export default function Editor() {
           busy: !!busy,
         });
         el.classList.add('glint-agent-target');
-        setTimeout(() => el.classList.remove('glint-agent-target'), 700);
+        setTimeout(() => el.classList.remove('glint-agent-target'), 280);
+
+        if (click) {
+          // onlyIfAriaChecked: click only when the control currently matches that state
+          // e.g. 'false' → turn status bar ON if it is currently off.
+          if (
+            onlyIfAriaChecked != null
+            && el.getAttribute('aria-checked') !== String(onlyIfAriaChecked)
+          ) {
+            return;
+          }
+          // Real UI control - same path as a human click.
+          el.click();
+        }
       };
+
+      // Tab panels mount on click; wait a couple frames so the target exists.
       requestAnimationFrame(() => requestAnimationFrame(place));
       return true;
     };
@@ -394,7 +411,7 @@ export default function Editor() {
       if (frameIndex == null || frameIndex < 0) return;
       const col = document.querySelector(`[data-frame-index="${frameIndex}"]`);
       if (!col) return;
-      col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      col.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
 
       const place = () => {
         const art =
@@ -410,7 +427,6 @@ export default function Editor() {
         });
       };
 
-      // Wait a frame so scrollIntoView has started; then measure.
       requestAnimationFrame(() => requestAnimationFrame(place));
     };
 
@@ -426,13 +442,16 @@ export default function Editor() {
       // Agent finished / aborted / errored → hide (telepresence only while acting)
       if (ev?.phase === 'done' || ev?.phase === 'aborted' || ev?.phase === 'error') {
         clearHide();
-        hideTimer = setTimeout(hideCursor, 280);
+        hideTimer = setTimeout(hideCursor, 120);
         return;
       }
       if (ev?.phase === 'select' || ev?.phase === 'apply') {
         clearHide();
         if (ev.uiTarget) {
-          moveToUi(ev.uiTarget, ev.label || '', true);
+          moveToUi(ev.uiTarget, ev.label || '', true, {
+            click: ev.phase === 'apply' && ev.uiClick !== false,
+            onlyIfAriaChecked: ev.onlyIfAriaChecked ?? null,
+          });
         } else if (typeof ev.frameIndex === 'number') {
           moveToArtboard(ev.frameIndex, ev.label || '', true);
         }
