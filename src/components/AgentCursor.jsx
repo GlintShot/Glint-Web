@@ -1,13 +1,19 @@
 /**
- * Copilot agent cursor - soft Glint pointer that travels frame to frame.
+ * Copilot agent cursor - tip-aligned Glint pointer (visible only while agent acts).
+ * Hotspot is the tip of the arrow (~6,4) so translate positions the tip, not the box.
  */
+const HOTSPOT_X = 6;
+const HOTSPOT_Y = 4;
+
 export default function AgentCursor({ visible, x, y, label, busy }) {
   if (!visible || x == null || y == null) return null;
 
   return (
     <div
       className="glint-agent-cursor pointer-events-none fixed z-[80]"
-      style={{ transform: `translate3d(${x}px, ${y}px, 0)` }}
+      style={{
+        transform: `translate3d(${x - HOTSPOT_X}px, ${y - HOTSPOT_Y}px, 0)`,
+      }}
       aria-hidden
     >
       <div className={`glint-agent-cursor-core ${busy ? 'is-busy' : ''}`}>

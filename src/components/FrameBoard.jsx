@@ -160,6 +160,7 @@ export default function FrameBoard({
               </div>
 
               <div
+                data-frame-artboard
                 className={`relative overflow-hidden rounded-md bg-glint-surface shrink-0 transition-[box-shadow,opacity,ring] duration-150 ${
                   dropTarget === i
                     ? 'ring-2 ring-glint-accent ring-offset-2 ring-offset-glint-bg shadow-lg shadow-glint-accent/30'

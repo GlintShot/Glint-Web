@@ -253,47 +253,72 @@ export default function Editor() {
   });
 
   useEffect(() => {
-    const moveToFrame = (frameIndex, label, busy) => {
-      if (frameIndex == null || frameIndex < 0) return;
-      const el = document.querySelector(`[data-frame-index="${frameIndex}"]`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      const r = el.getBoundingClientRect();
-      setAgentCursor({
-        visible: true,
-        x: r.left + r.width * 0.55,
-        y: r.top + r.height * 0.42,
-        label: label || '',
-        busy: !!busy,
-      });
+    let hideTimer = null;
+
+    const clearHide = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
     };
 
-    return copilot.session.subscribe((ev) => {
-      if (!copilot.session.enabled) {
-        setAgentCursor((c) => ({ ...c, visible: false, busy: false }));
+    const hideCursor = () => {
+      clearHide();
+      setAgentCursor((c) => ({ ...c, visible: false, busy: false, label: '' }));
+    };
+
+    const moveToArtboard = (frameIndex, label, busy) => {
+      if (frameIndex == null || frameIndex < 0) return;
+      const col = document.querySelector(`[data-frame-index="${frameIndex}"]`);
+      if (!col) return;
+      col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
+      const place = () => {
+        const art =
+          col.querySelector('[data-frame-artboard]') || col;
+        const r = art.getBoundingClientRect();
+        // Tip on the device area (slightly above center)
+        setAgentCursor({
+          visible: true,
+          x: r.left + r.width * 0.5,
+          y: r.top + r.height * 0.38,
+          label: label || '',
+          busy: !!busy,
+        });
+      };
+
+      // Wait a frame so scrollIntoView has started; then measure.
+      requestAnimationFrame(() => requestAnimationFrame(place));
+    };
+
+    const unsub = copilot.session.subscribe((ev) => {
+      if (!copilot.session.enabled || copilot.session.paused) {
+        hideCursor();
         return;
       }
-      if (ev?.phase === 'session' && ev.enabled === false) {
-        setAgentCursor((c) => ({ ...c, visible: false, busy: false }));
+      if (ev?.phase === 'session' && (ev.enabled === false || ev.paused === true)) {
+        hideCursor();
         return;
       }
-      if (ev?.phase === 'done' && ev.op === 'matchDeviceTransform') {
-        setAgentCursor((c) => ({
-          ...c,
-          busy: false,
-          label: ev.label || 'Done',
-        }));
+      // Agent finished / aborted / errored → hide (telepresence only while acting)
+      if (ev?.phase === 'done' || ev?.phase === 'aborted' || ev?.phase === 'error') {
+        clearHide();
+        hideTimer = setTimeout(hideCursor, 280);
         return;
       }
-      if (typeof ev?.frameIndex === 'number') {
-        moveToFrame(
-          ev.frameIndex,
-          ev.label || '',
-          ev.phase === 'select' || ev.phase === 'apply',
-        );
+      if (ev?.phase === 'select' || ev?.phase === 'apply') {
+        clearHide();
+        if (typeof ev.frameIndex === 'number') {
+          moveToArtboard(ev.frameIndex, ev.label || '', true);
+        }
       }
     });
-  }, [copilot.session, copilot.enabled]);
+
+    return () => {
+      clearHide();
+      unsub();
+    };
+  }, [copilot.session, copilot.enabled, copilot.paused]);
 
   const loadTemplate = (t) => {
     setTemplate(t);
