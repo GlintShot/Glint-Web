@@ -387,7 +387,7 @@ export default function Home() {
             <span className="text-xs sm:text-sm text-glint-text-secondary">
               Crafted by the{' '}
               <a
-                href="https://github.com/Glint-Org"
+                href="https://github.com/GlintShot"
                 target="_blank"
                 rel="noreferrer"
                 className="text-glint-text hover:text-glint-accent transition-colors font-semibold"
@@ -397,7 +397,7 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-6 text-xs text-glint-text-tertiary">
-            <a href="https://github.com/Glint-Org" target="_blank" rel="noreferrer" className="hover:text-glint-text transition-colors">GitHub</a>
+            <a href="https://github.com/GlintShot" target="_blank" rel="noreferrer" className="hover:text-glint-text transition-colors">GitHub</a>
             <span>•</span>
             <a href="#templates" className="hover:text-glint-text transition-colors">Templates</a>
             <span>•</span>
