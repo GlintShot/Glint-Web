@@ -1210,20 +1210,22 @@ export async function addFramedScreenshot(canvas, screenshotUrl, frameId, opts =
 }
 
 export function addTextOverlay(canvas, text, opts = {}) {
+  const left = opts.left != null ? opts.left : canvas.getWidth() / 2;
+  const top = opts.top != null ? opts.top : 120;
   const fb = new IText(text || 'Double-click to edit', {
-    left: opts.left ?? canvas.getWidth() / 2,
-    top: opts.top ?? 120,
+    left,
+    top,
     fontSize: opts.fontSize ?? 48,
     fontFamily: `${opts.fontFamily || 'Space Grotesk'}, sans-serif`,
     fontWeight: opts.fontWeight ?? '700',
     fill: opts.fill ?? '#ffffff',
     textAlign: opts.textAlign ?? 'center',
     originX: opts.originX ?? 'center',
+    originY: opts.originY ?? 'top',
     selectable: true,
     evented: true,
     editable: true,
     glintRole: 'text',
-    ...opts,
   });
   applySelectionStyle(fb);
   canvas.add(fb);

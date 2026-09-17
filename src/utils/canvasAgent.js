@@ -12,6 +12,7 @@ import {
 } from './canvasEngine.js';
 import { isUserScreenshot } from './assetLibrary.js';
 import { normalizeHex, remapCanvasColors } from './templatePalette.js';
+import { addGraphicLayer, addShapeLayer } from './graphicLayers.js';
 
 export function findDeviceOnCanvas(canvas) {
   if (!canvas?.getObjects) return null;
@@ -292,14 +293,93 @@ export function setTextContent(ctx, text, frameIndex, textIndex = 0) {
 export function addText(ctx, text, frameIndex, opts = {}) {
   const { canvas, index } = canvasAt(ctx, frameIndex);
   if (!canvas) return { ok: false, error: 'no_canvas', frameIndex: index };
-  const obj = addTextOverlay(canvas, text || 'Your headline', {
-    fill: opts.fill,
-    fontFamily: opts.fontFamily,
-    fontSize: opts.fontSize,
-    left: opts.left,
-    top: opts.top,
-  });
+  const style = {};
+  if (opts.fill != null) style.fill = opts.fill;
+  if (opts.fontFamily != null) style.fontFamily = opts.fontFamily;
+  if (opts.fontWeight != null) style.fontWeight = opts.fontWeight;
+  if (opts.fontSize != null) style.fontSize = opts.fontSize;
+  if (opts.left != null) style.left = opts.left;
+  if (opts.top != null) style.top = opts.top;
+  if (opts.textAlign != null) style.textAlign = opts.textAlign;
+  if (opts.originX != null) style.originX = opts.originX;
+  if (opts.originY != null) style.originY = opts.originY;
+  const obj = addTextOverlay(canvas, text || 'Your headline', style);
+  // Force horizontal center when caller did not pin left (undefined used to clobber default).
+  if (opts.left == null && obj) {
+    obj.set({ left: canvas.getWidth() / 2, originX: 'center', textAlign: 'center' });
+    obj.setCoords?.();
+    canvas.requestRenderAll?.();
+  }
   return { ok: !!obj, frameIndex: index, text: obj?.text || text };
+}
+
+/** Place an SVG graphic from /public/graphics on a frame. */
+export async function addGraphic(ctx, args = {}) {
+  const { canvas, index } = canvasAt(ctx, args.frameIndex);
+  if (!canvas) return { ok: false, error: 'no_canvas', frameIndex: index };
+  if (!args.src) return { ok: false, error: 'no_src' };
+  const obj = await addGraphicLayer(canvas, {
+    src: args.src,
+    left: args.left,
+    top: args.top,
+    width: args.width,
+    height: args.height,
+    scale: args.scale,
+    fill: args.fill || args.fillA,
+    fill2: args.fill2 || args.fillB,
+    fill3: args.fill3 || args.fillC,
+    opacity: args.opacity,
+    angle: args.angle,
+    sendToBack: !!args.sendToBack,
+  });
+  return { ok: !!obj, frameIndex: index, src: args.src };
+}
+
+/** Place a primitive shape (circle / rect / ellipse) on a frame. */
+export function addShape(ctx, args = {}) {
+  const { canvas, index } = canvasAt(ctx, args.frameIndex);
+  if (!canvas) return { ok: false, error: 'no_canvas', frameIndex: index };
+  const obj = addShapeLayer(canvas, {
+    shape: args.shape || 'circle',
+    left: args.left ?? 0,
+    top: args.top ?? 0,
+    radius: args.radius,
+    width: args.width,
+    height: args.height,
+    rx: args.rx,
+    ry: args.ry,
+    fill: args.fill,
+    opacity: args.opacity,
+    angle: args.angle,
+    sendToBack: !!args.sendToBack,
+  });
+  return { ok: !!obj, frameIndex: index, shape: args.shape || 'circle' };
+}
+
+/** Remove transferable overlays (text/graphics), keep device shells. */
+export function clearDecorations(ctx, frameIndex = 'all') {
+  const frames = ctx.getFrames?.() || [];
+  const indexes =
+    frameIndex === 'all' || frameIndex == null
+      ? frames.map((_, i) => i)
+      : [resolveFrameIndex(ctx, frameIndex)];
+  let removed = 0;
+  for (const i of indexes) {
+    const frame = frames[i];
+    const canvas = frame ? ctx.getCanvas?.(frame.id) : null;
+    if (!canvas?.getObjects) continue;
+    const doomed = canvas.getObjects().filter((o) => {
+      const role = o.glintRole;
+      return role === 'text' || role === 'graphic';
+    });
+    for (const obj of doomed) {
+      canvas.remove(obj);
+      removed += 1;
+    }
+    canvas.discardActiveObject?.();
+    canvas.requestRenderAll?.();
+  }
+  return { ok: true, removed };
 }
 
 export async function extractTheme(ctx) {
@@ -335,6 +415,9 @@ export const CANVAS_AGENT_OPS = [
   'setScreenshotStyle',
   'setText',
   'addText',
+  'addGraphic',
+  'addShape',
+  'clearDecorations',
   'extractTheme',
   'startBlank',
 ];
@@ -411,6 +494,12 @@ export async function runCanvasOp(ctx, op, args = {}) {
       return setTextContent(ctx, args.text, args.frameIndex, args.textIndex ?? 0);
     case 'addText':
       return addText(ctx, args.text, args.frameIndex, args);
+    case 'addGraphic':
+      return addGraphic(ctx, args);
+    case 'addShape':
+      return addShape(ctx, args);
+    case 'clearDecorations':
+      return clearDecorations(ctx, args.frameIndex ?? 'all');
     case 'extractTheme':
       return extractTheme(ctx);
     case 'startBlank':
