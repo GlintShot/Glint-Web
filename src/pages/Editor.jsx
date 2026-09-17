@@ -22,7 +22,9 @@ import {
   useFrames,
   framesFromTemplate,
   framesFromScreenshots,
+  framesFromScratch,
   stripFramesToDevices,
+  DEFAULT_SCRATCH_STORE,
 } from '../hooks/useFrames';
 import { loadThemePresets, loadAllTemplates } from '../utils/templateLoader';
 import {
@@ -61,7 +63,13 @@ import { parseGlint, isGlintFile } from '../utils/projectPack';
 import CopyToFrameModal from '../components/CopyToFrameModal';
 import CopilotBar from '../components/CopilotBar';
 import AgentCursor from '../components/AgentCursor';
-import { copySelectionToFrame } from '../utils/copyObjectToFrame';
+import { copySelectionToFrame, moveSelectionToFrame } from '../utils/copyObjectToFrame';
+import { installCrossFrameObjectDrag } from '../utils/crossFrameObjectDrag';
+import {
+  copySelectionToClipboard,
+  cutSelectionToClipboard,
+  pasteClipboardToCanvas,
+} from '../utils/objectClipboard';
 import { useCopilotSession } from '../hooks/useCopilotSession';
 
 const LEFT_W = 280;
@@ -75,6 +83,7 @@ const ZOOM_STEP = 1.08;
 export default function Editor() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isScratch = !!location.state?.scratch;
   const initialTemplate = location.state?.template || null;
   const initialScreenshots = location.state?.screenshots || [];
   const initialAssetItems = location.state?.assetItems?.length
@@ -84,6 +93,7 @@ export default function Editor() {
         .map((url, i) => ({ id: `init-${i}`, url, name: `Screenshot ${i + 1}` }));
 
   const initialFrames = useMemo(() => {
+    if (isScratch) return framesFromScratch({ count: 5, store: location.state?.store || DEFAULT_SCRATCH_STORE });
     if (initialTemplate) return framesFromTemplate(initialTemplate, initialScreenshots);
     if (initialScreenshots.length) return framesFromScreenshots(initialScreenshots);
     // Blank until an enabled gallery pack is applied (avoids fake charcoal+Pixel scratch).
@@ -107,12 +117,22 @@ export default function Editor() {
 
   const [session, setSession] = useState(location.state?.session || null);
   const [background, setBackgroundState] = useState({ label: 'Charcoal', type: 'solid', value: '#1C1C1E' });
-  const [deviceFrame, setDeviceFrame] = useState(null);
+  const [deviceFrame, setDeviceFrame] = useState(() => {
+    if (!isScratch) return null;
+    return getStoreTarget(
+      location.state?.store || DEFAULT_SCRATCH_STORE,
+    ).defaultFrame ?? null;
+  });
   const [screenshotStyle, setScreenshotStyle] = useState({ ...DEFAULT_SCREENSHOT_STYLE });
   const [template, setTemplate] = useState(initialTemplate);
   const [textOverlay, setTextOverlay] = useState({ text: '', style: {} });
   const [exportPreset, setExportPreset] = useState(
-    resolveStoreKey(session?.store ?? initialTemplate?.store ?? 'play/phone'),
+    resolveStoreKey(
+      session?.store
+        ?? location.state?.store
+        ?? initialTemplate?.store
+        ?? DEFAULT_SCRATCH_STORE,
+    ),
   );
   const [dirty, setDirty] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState(null);
@@ -142,7 +162,10 @@ export default function Editor() {
   const userScaleRef = useRef(false);
   const [deviceMenu, setDeviceMenu] = useState(null);
   const [copyToFrameOpen, setCopyToFrameOpen] = useState(false);
+  const [objectDropTarget, setObjectDropTarget] = useState(null);
+  const [blankConfirmOpen, setBlankConfirmOpen] = useState(false);
   const canvasMapRef = useRef({});
+  const crossFrameDragRef = useRef(null);
   const framesRef = useRef(frames);
   framesRef.current = frames;
   const activeIndexRef = useRef(activeIndex);
@@ -165,6 +188,8 @@ export default function Editor() {
   const applyBezelToFrameIndexRef = useRef(async () => {});
   const patchScreenshotStyleRef = useRef(() => {});
   const extractThemeRef = useRef(async () => {});
+  const applyScratchBoardRef = useRef(() => {});
+  const pendingScratchStoreRef = useRef(null);
   const canvasGestureRef = useRef(new WeakSet());
   const [historyTick, setHistoryTick] = useState(0);
   const styleApplyTimerRef = useRef(0);
@@ -201,6 +226,7 @@ export default function Editor() {
     if (!frameId) return;
     if (canvas) {
       canvasMapRef.current[frameId] = canvas;
+      crossFrameDragRef.current?.attachCanvas(canvas, frameId);
       if (!canvasGestureRef.current.has(canvas)) {
         canvasGestureRef.current.add(canvas);
         let gesturing = false;
@@ -320,6 +346,9 @@ export default function Editor() {
     },
     extractTheme: async () => {
       await extractThemeRef.current();
+    },
+    startBlank: async (opts) => {
+      applyScratchBoardRef.current?.(opts);
     },
     onDirty: markDirty,
     getMeta: () => ({
@@ -501,6 +530,37 @@ export default function Editor() {
     setPendingTemplate(null);
   };
 
+  const applyScratchBoard = useCallback((opts = {}) => {
+    pushHistoryRef.current();
+    const store = resolveStoreKey(opts.store || exportPreset || DEFAULT_SCRATCH_STORE);
+    const count = opts.count ?? 5;
+    const target = getStoreTarget(store);
+    setExportPreset(store);
+    setDeviceFrame(target.defaultFrame ?? null);
+    setTemplate(null);
+    setFrames(framesFromScratch({ count, store }));
+    setActiveIndex(0);
+    try {
+      sessionStorage.removeItem(LAST_TEMPLATE_KEY);
+    } catch {
+      /* ignore */
+    }
+    markDirty();
+    setBlankConfirmOpen(false);
+    pendingScratchStoreRef.current = null;
+  }, [markDirty, setFrames, setActiveIndex, exportPreset]);
+
+  applyScratchBoardRef.current = applyScratchBoard;
+
+  const requestStartBlank = useCallback((store) => {
+    pendingScratchStoreRef.current = store || exportPreset || DEFAULT_SCRATCH_STORE;
+    if (dirtyRef.current) {
+      setBlankConfirmOpen(true);
+      return;
+    }
+    applyScratchBoard({ store: pendingScratchStoreRef.current });
+  }, [applyScratchBoard, exportPreset]);
+
   const requestLeaveEditor = () => {
     if (dirtyRef.current) {
       setLeaveOpen(true);
@@ -517,7 +577,7 @@ export default function Editor() {
   };
 
   // Reload / bare /editor: restore last pack or first enabled gallery template.
-  // (location.state is lost on refresh - that charcoal+Pixel board was the empty fallback.)
+  // Scratch entry and imports skip auto-pick so the blank board stays blank.
   useEffect(() => {
     if (initialTemplate) {
       try {
@@ -528,7 +588,14 @@ export default function Editor() {
       bootstrappingRef.current = false;
       return;
     }
-    if (location.state?.glintPack || location.state?.screenshots?.length) {
+    if (isScratch || location.state?.glintPack || location.state?.screenshots?.length) {
+      if (isScratch) {
+        try {
+          sessionStorage.removeItem(LAST_TEMPLATE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
       bootstrappingRef.current = false;
       return;
     }
@@ -633,6 +700,27 @@ export default function Editor() {
   }, [getSnapshot]);
 
   pushHistoryRef.current = pushHistory;
+
+  useEffect(() => {
+    const bridge = installCrossFrameObjectDrag({
+      getFrames: () => framesRef.current,
+      getCanvasMap: () => canvasMapRef.current,
+      setActiveIndex,
+      onDropTargetChange: setObjectDropTarget,
+      onTransfer: () => {
+        pushHistoryRef.current();
+        markDirty();
+      },
+    });
+    crossFrameDragRef.current = bridge;
+    Object.entries(canvasMapRef.current).forEach(([frameId, canvas]) => {
+      bridge.attachCanvas(canvas, frameId);
+    });
+    return () => {
+      bridge.dispose();
+      crossFrameDragRef.current = null;
+    };
+  }, [markDirty, setActiveIndex]);
 
   const canUndo = useMemo(() => historyRef.current.canUndo(), [historyTick]);
   const canRedo = useMemo(() => historyRef.current.canRedo(), [historyTick]);
@@ -932,6 +1020,32 @@ export default function Editor() {
     markDirty();
   }, [activeCanvas, markDirty, pushHistory]);
 
+  const handleCopy = useCallback(() => {
+    if (!activeCanvas) return false;
+    const res = copySelectionToClipboard(activeCanvas);
+    return !!res.ok;
+  }, [activeCanvas]);
+
+  const handleCut = useCallback(() => {
+    if (!activeCanvas) return false;
+    const objects = activeCanvas.getActiveObject?.();
+    if (!objects) return false;
+    pushHistory();
+    const res = cutSelectionToClipboard(activeCanvas);
+    if (!res.ok) return false;
+    markDirty();
+    return true;
+  }, [activeCanvas, markDirty, pushHistory]);
+
+  const handlePaste = useCallback(async () => {
+    if (!activeCanvas) return false;
+    pushHistory();
+    const res = await pasteClipboardToCanvas(activeCanvas);
+    if (!res.ok) return false;
+    markDirty();
+    return true;
+  }, [activeCanvas, markDirty, pushHistory]);
+
   const handleSessionImport = ({ screenshots: imported, session: importedSession }) => {
     setSession(importedSession);
     setExportPreset(resolveStoreKey(importedSession.store ?? 'play/phone'));
@@ -1055,7 +1169,7 @@ export default function Editor() {
     }
   }, [updateFrame, screenshotStyle]);
 
-  const handleCopyToFrame = useCallback(async (targetFrameId) => {
+  const handleCopyToFrame = useCallback(async (targetFrameId, _targetIndex, mode = 'copy') => {
     const sourceCanvas = canvasMapRef.current[frames[activeIndex]?.id];
     const targetCanvas = canvasMapRef.current[targetFrameId];
     if (!sourceCanvas || !targetCanvas) return;
@@ -1068,10 +1182,17 @@ export default function Editor() {
       : [activeObj];
 
     const offset = { x: 0, y: 0 };
-    await copySelectionToFrame(sourceCanvas, targetCanvas, objects, offset);
+    if (mode === 'move') {
+      await moveSelectionToFrame(sourceCanvas, targetCanvas, objects, offset);
+    } else {
+      await copySelectionToFrame(sourceCanvas, targetCanvas, objects, offset);
+    }
+    const idx = frames.findIndex((f) => f.id === targetFrameId);
+    if (idx >= 0) setActiveIndex(idx);
     pushHistory();
+    markDirty();
     setCopyToFrameOpen(false);
-  }, [activeIndex, frames, pushHistory]);
+  }, [activeIndex, frames, pushHistory, markDirty, setActiveIndex]);
 
   const assignScreenshotToFrame = useCallback(async (index, url, assetItem = null) => {
     if (!isUserScreenshot(url)) return;
@@ -1291,34 +1412,69 @@ export default function Editor() {
   useEffect(() => {
     const onKeyDown = (e) => {
       const tag = document.activeElement?.tagName;
-      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && activeCanvas?.getActiveObjects()?.length) {
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        || document.activeElement?.isContentEditable;
+      const fabricEditing = !!activeCanvas?.getActiveObject?.()?.isEditing;
+      if (typing || fabricEditing) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && (e.key === 'c' || e.key === 'C')) {
+        if (handleCopy()) e.preventDefault();
+        return;
+      }
+      if (mod && (e.key === 'x' || e.key === 'X')) {
+        if (handleCut()) e.preventDefault();
+        return;
+      }
+      if (mod && (e.key === 'v' || e.key === 'V')) {
+        e.preventDefault();
+        handlePaste();
+        return;
+      }
+      if (mod && (e.key === 'd' || e.key === 'D')) {
+        // Duplicate = copy + paste in place
+        e.preventDefault();
+        if (handleCopy()) handlePaste();
+        return;
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && activeCanvas?.getActiveObjects?.()?.length) {
         e.preventDefault();
         handleDelete();
       }
-      if (typing) return;
-      if ((e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      if ((e.key === 'z' || e.key === 'Z') && mod && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
       }
       if (
-        ((e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey) && e.shiftKey)
-        || ((e.key === 'y' || e.key === 'Y') && (e.metaKey || e.ctrlKey))
+        ((e.key === 'z' || e.key === 'Z') && mod && e.shiftKey)
+        || ((e.key === 'y' || e.key === 'Y') && mod)
       ) {
         e.preventDefault();
         handleRedo();
       }
-      if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey) handleAddText();
-      if (e.key === '\\' && !e.metaKey && !e.ctrlKey) {
+      if ((e.key === 't' || e.key === 'T') && !mod) handleAddText();
+      if (e.key === '\\' && !mod) {
         setLeftOpen((v) => !v);
         setRightOpen((v) => !v);
       }
-      if (e.key === 'ArrowLeft' && !e.metaKey) setActiveIndex((i) => Math.max(0, i - 1));
-      if (e.key === 'ArrowRight' && !e.metaKey) setActiveIndex((i) => Math.min(frames.length - 1, i + 1));
+      if (e.key === 'ArrowLeft' && !mod) setActiveIndex((i) => Math.max(0, i - 1));
+      if (e.key === 'ArrowRight' && !mod) setActiveIndex((i) => Math.min(frames.length - 1, i + 1));
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeCanvas, handleAddText, handleDelete, handleUndo, handleRedo, frames.length, setActiveIndex]);
+  }, [
+    activeCanvas,
+    handleAddText,
+    handleDelete,
+    handleCopy,
+    handleCut,
+    handlePaste,
+    handleUndo,
+    handleRedo,
+    frames.length,
+    setActiveIndex,
+  ]);
 
   const getLiveCanvases = () =>
     frames.map((f) => canvasMapRef.current[f.id]).filter(Boolean);
@@ -1452,6 +1608,8 @@ export default function Editor() {
             onDropScreenshot={assignScreenshotToFrame}
             onClearSelection={clearCanvasSelection}
             showFrameChrome={!canZoomIn}
+            objectDropTarget={objectDropTarget}
+            store={exportPreset}
             agentFrameIndex={
               copilot.enabled && !copilot.paused && typeof copilot.status?.frameIndex === 'number'
                 ? copilot.status.frameIndex
@@ -1545,7 +1703,11 @@ export default function Editor() {
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 glint-scrollbar">
               {leftTab === 'templates' && (
-                <TemplateGallery onChange={handleSelectTemplate} activeStore={exportPreset} />
+                <TemplateGallery
+                  onChange={handleSelectTemplate}
+                  activeStore={exportPreset}
+                  onStartBlank={requestStartBlank}
+                />
               )}
               {leftTab === 'assets' && (
                 <>
@@ -1729,6 +1891,23 @@ export default function Editor() {
         enterConfirms
         onConfirm={confirmStripToDeviceFrames}
         onCancel={() => setStripConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={blankConfirmOpen}
+        title="Start blank board?"
+        message="Replaces the current board with 5 empty frames for the selected store size. Unsaved layout and text will be lost."
+        confirmLabel="Start blank"
+        cancelLabel="Cancel"
+        danger
+        enterConfirms
+        onConfirm={() => applyScratchBoard({
+          store: pendingScratchStoreRef.current || exportPreset || DEFAULT_SCRATCH_STORE,
+        })}
+        onCancel={() => {
+          pendingScratchStoreRef.current = null;
+          setBlankConfirmOpen(false);
+        }}
       />
 
       <ConfirmDialog
