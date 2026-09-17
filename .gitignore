@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 graphify-out/
+
+# Local polish / agent render output
+.glint-render/
