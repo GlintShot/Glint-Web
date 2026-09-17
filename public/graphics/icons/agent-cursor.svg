@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="glintAgentCursorGrad" x1="5" y1="2" x2="21" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F0D78C"/>
+      <stop offset="1" stop-color="#C9A227"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M5 2 L5 22.5 L9.8 18.2 L13.2 26.2 L17.4 24.4 L14.1 16.6 L21.5 16.4 Z"
+    fill="url(#glintAgentCursorGrad)"
+    stroke="rgba(26,28,31,0.4)"
+    stroke-width="0.6"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+</svg>

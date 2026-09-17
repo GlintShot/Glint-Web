@@ -343,6 +343,7 @@ export default function Editor() {
     y: 0,
     label: '',
     busy: false,
+    clicking: false,
   });
 
   useEffect(() => {
@@ -357,7 +358,7 @@ export default function Editor() {
 
     const hideCursor = () => {
       clearHide();
-      setAgentCursor((c) => ({ ...c, visible: false, busy: false, label: '' }));
+      setAgentCursor((c) => ({ ...c, visible: false, busy: false, clicking: false, label: '' }));
     };
 
     const moveToUi = (uiTarget, label, busy, opts = {}) => {
@@ -384,6 +385,7 @@ export default function Editor() {
           y: r.top + r.height * 0.5,
           label: label || '',
           busy: !!busy,
+          clicking: !!click,
         });
         el.classList.add('glint-agent-target');
         setTimeout(() => el.classList.remove('glint-agent-target'), 280);
@@ -407,7 +409,7 @@ export default function Editor() {
       return true;
     };
 
-    const moveToArtboard = (frameIndex, label, busy) => {
+    const moveToArtboard = (frameIndex, label, busy, clicking = false) => {
       if (frameIndex == null || frameIndex < 0) return;
       const col = document.querySelector(`[data-frame-index="${frameIndex}"]`);
       if (!col) return;
@@ -424,6 +426,7 @@ export default function Editor() {
           y: r.top + r.height * 0.38,
           label: label || '',
           busy: !!busy,
+          clicking: !!clicking,
         });
       };
 
@@ -447,13 +450,14 @@ export default function Editor() {
       }
       if (ev?.phase === 'select' || ev?.phase === 'apply') {
         clearHide();
+        const clicking = ev.phase === 'apply';
         if (ev.uiTarget) {
           moveToUi(ev.uiTarget, ev.label || '', true, {
-            click: ev.phase === 'apply' && ev.uiClick !== false,
+            click: clicking && ev.uiClick !== false,
             onlyIfAriaChecked: ev.onlyIfAriaChecked ?? null,
           });
         } else if (typeof ev.frameIndex === 'number') {
-          moveToArtboard(ev.frameIndex, ev.label || '', true);
+          moveToArtboard(ev.frameIndex, ev.label || '', true, clicking);
         }
       }
     });
@@ -1461,6 +1465,7 @@ export default function Editor() {
             y={agentCursor.y}
             label={agentCursor.label}
             busy={agentCursor.busy}
+            clicking={agentCursor.clicking}
           />
 
           <div
