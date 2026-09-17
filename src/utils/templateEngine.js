@@ -678,13 +678,14 @@ async function paintDesignContents(
   }
 
   if (!design?.layers?.length) {
-    // Scratch board only - not a gallery template. Neutral white + no invented bezel theme.
+    // Scratch board only - not a gallery template. Neutral white + store default bezel.
     setBackground(canvas, 'solid', '#FFFFFF');
     if (screenshotUrl) {
+      const frame = metadata?.deviceFrame || metadata?.defaultFrame || 'pixel9';
       await addDeviceLayer(
         canvas,
         screenshotUrl,
-        { frame: 'pixel9', scale: MIN_DEVICE_COVERAGE, position: 'center', marginTop: Math.round(canvasHeight * 0.18), slot: 0 },
+        { frame, scale: MIN_DEVICE_COVERAGE, position: 'center', marginTop: Math.round(canvasHeight * 0.18), slot: 0 },
         canvasWidth,
         canvasHeight,
         editable,
@@ -723,11 +724,21 @@ export async function applyDesignToFrame(
     signal,
     displayCssWidth = 0,
     displayCssHeight = 0,
+    deviceFrame = null,
   } = {},
 ) {
   if (!canvas) return;
 
-  const opts = { canvasWidth, canvasHeight, themes, metadata, editable };
+  const opts = {
+    canvasWidth,
+    canvasHeight,
+    themes,
+    metadata: {
+      ...metadata,
+      deviceFrame: deviceFrame || metadata.deviceFrame || metadata.defaultFrame || null,
+    },
+    editable,
+  };
   const draftEl = document.createElement('canvas');
   const draft = createCanvas(draftEl, canvasWidth, canvasHeight);
 

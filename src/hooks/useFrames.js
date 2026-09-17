@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import { getTemplateSlides, resolveFrameDesign, resolveExtraFrameDesign } from '../utils/templateEngine';
-import { getPlaceholderScreenshots } from '../utils/placeholderScreenshots';
+import { getPlaceholderScreenshots, getWhiteScreenshot } from '../utils/placeholderScreenshots';
 
 export const MIN_FRAMES = 1;
 export const MAX_FRAMES = 10;
 export const DEFAULT_FRAME_COUNT = 5;
+export const DEFAULT_SCRATCH_STORE = 'play/phone';
 
 let _id = 0;
 export function newFrameId() {
@@ -47,6 +48,28 @@ export function framesFromScreenshots(urls = []) {
   const frames = [];
   for (let i = 0; i < count; i++) {
     frames.push(createEmptyFrame(urls[i] || placeholders[i] || null));
+  }
+  return frames;
+}
+
+/**
+ * Blank board: N artboards with no template pack — white screens + Pixel9 via paintDesignContents.
+ * @param {{ count?: number, store?: string }} [opts]
+ */
+export function framesFromScratch({ count = DEFAULT_FRAME_COUNT, store = DEFAULT_SCRATCH_STORE } = {}) {
+  const n = Math.min(MAX_FRAMES, Math.max(MIN_FRAMES, count));
+  const white = getWhiteScreenshot();
+  const stamp = Date.now();
+  const frames = [];
+  for (let i = 0; i < n; i++) {
+    frames.push({
+      id: newFrameId(),
+      design: null,
+      screenshotUrl: white,
+      fabricJson: null,
+      fabricRestoreKey: `scratch-${stamp}-${i}`,
+      store,
+    });
   }
   return frames;
 }

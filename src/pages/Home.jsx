@@ -12,14 +12,16 @@ import {
   CheckCircle2,
   FolderOpen,
   Zap,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import UploadZone from '../components/UploadZone';
 import SessionImporter from '../components/SessionImporter';
 import { loadAllTemplates, filterVisibleTemplates } from '../utils/templateLoader';
 import TemplateSetPreview from '../components/TemplateSetPreview';
-import DeviceBrowseFilters, { filterByDevice } from '../components/StoreBrowseFilters';
+import DeviceBrowseFilters, { filterByDevice, deviceFilterToStore } from '../components/StoreBrowseFilters';
 import { parseGlint, isGlintFile } from '../utils/projectPack';
+import { getStoreTarget } from '../utils/storeCatalog';
 
 export default function Home() {
   const [templates, setTemplates] = useState([]);
@@ -92,6 +94,14 @@ export default function Home() {
     navigate('/editor', { state: { template } });
   };
 
+  const handleStartBlank = (storeKey) => {
+    const store = storeKey || deviceFilterToStore(deviceFilter);
+    navigate('/editor', { state: { scratch: true, store } });
+  };
+
+  const scratchStore = deviceFilterToStore(deviceFilter);
+  const scratchTarget = getStoreTarget(scratchStore);
+
   return (
     <div className="h-screen overflow-y-auto glint-gradient-bg selection:bg-glint-accent/30 selection:text-glint-text">
       {/* Modern Sticky Frosted Navigation */}
@@ -125,11 +135,11 @@ export default function Home() {
               Import
             </a>
             <button
-              onClick={() => navigate('/editor')}
+              onClick={() => handleStartBlank()}
               className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 glint-btn-primary rounded-xl text-xs font-semibold shadow-sm hover:shadow-md transition-all"
             >
               <Sparkles size={14} />
-              Open Studio
+              Blank board
             </button>
             <button
               onClick={toggle}
@@ -313,11 +323,39 @@ export default function Home() {
             </div>
             <h3 className="text-2xl sm:text-3xl font-bold text-glint-text tracking-tight">Or build from scratch</h3>
             <p className="text-xs sm:text-sm text-glint-text-secondary">
-              Import raw screenshots, load existing Glint capture sessions, or resume a saved project pack.
+              Start with empty device frames, import shots, or resume a saved project.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="glint-card rounded-2xl p-7 space-y-5 border border-glint-accent/40 bg-glint-accent/[0.03] hover:border-glint-accent/60 hover:shadow-lg hover:shadow-glint-accent/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-glint-accent/20 to-glint-accent/5 border border-glint-accent/20 flex items-center justify-center">
+                  <LayoutTemplate className="w-5 h-5 text-glint-accent" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-glint-text text-base">Blank board</h4>
+                  <p className="text-[11px] text-glint-text-tertiary">5 device frames, no template</p>
+                </div>
+              </div>
+              <DeviceBrowseFilters
+                device={deviceFilter}
+                onDeviceChange={setDeviceFilter}
+                size="sm"
+              />
+              <p className="text-xs text-glint-text-secondary leading-relaxed">
+                {scratchTarget.fullLabel} ({scratchTarget.width}×{scratchTarget.height}) with
+                white screens and the matching device bezel. Pick a size above, then start.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleStartBlank()}
+                className="w-full px-4 py-3 glint-btn-primary rounded-xl text-xs sm:text-sm font-semibold"
+              >
+                Start blank · {scratchTarget.label}
+              </button>
+            </div>
+
             <div className="glint-card rounded-2xl p-7 space-y-5 border border-glint-border hover:border-glint-accent/40 hover:shadow-lg hover:shadow-glint-accent/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-glint-accent/20 to-glint-accent/5 border border-glint-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">

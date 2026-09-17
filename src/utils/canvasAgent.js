@@ -310,6 +310,17 @@ export async function extractTheme(ctx) {
   return { ok: true };
 }
 
+/** Replace the board with N empty device frames (no template pack). */
+export async function startBlank(ctx, args = {}) {
+  if (typeof ctx.startBlank !== 'function') {
+    return { ok: false, error: 'start_blank_unsupported' };
+  }
+  const count = args.count ?? 5;
+  const store = args.store != null ? args.store : undefined;
+  await ctx.startBlank(store != null ? { count, store } : { count });
+  return { ok: true, count, store: store ?? null };
+}
+
 export const CANVAS_AGENT_OPS = [
   'getEditorState',
   'selectFrame',
@@ -325,6 +336,7 @@ export const CANVAS_AGENT_OPS = [
   'setText',
   'addText',
   'extractTheme',
+  'startBlank',
 ];
 
 /** Run a named op against a live ctx (used by Copilot session). */
@@ -401,6 +413,8 @@ export async function runCanvasOp(ctx, op, args = {}) {
       return addText(ctx, args.text, args.frameIndex, args);
     case 'extractTheme':
       return extractTheme(ctx);
+    case 'startBlank':
+      return startBlank(ctx, args);
     default:
       return { ok: false, error: 'unknown_op', op };
   }

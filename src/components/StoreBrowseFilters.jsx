@@ -1,4 +1,4 @@
-import { Smartphone, Tablet, Monitor, Tv, Watch, Laptop } from 'lucide-react';
+import { Smartphone, Tablet, Tv, Watch, Laptop } from 'lucide-react';
 import { resolveStoreKey } from '../utils/storeCatalog';
 
 /**
@@ -8,7 +8,7 @@ import { resolveStoreKey } from '../utils/storeCatalog';
 
 const DEVICE_FILTERS = [
   { id: 'android-phone', label: 'Android Phone', icon: Smartphone, stores: ['play/phone'] },
-  { id: 'iphone', label: 'iPhone', icon: Smartphone, stores: ['ios/phone'] },
+  { id: 'iphone', label: 'iPhone', icon: Smartphone, stores: ['ios/iphone'] },
   { id: 'ipad', label: 'iPad', icon: Tablet, stores: ['ios/ipad'] },
   { id: 'tablet', label: 'Tablet', icon: Tablet, stores: ['play/tablet-7', 'play/tablet-10'], disabled: true },
   { id: 'tv', label: 'TV', icon: Tv, stores: ['play/tv'], disabled: true },
@@ -24,6 +24,13 @@ export function storeToDeviceFilter(store) {
   if (key === 'ios/iphone') return 'iphone';
   if (key === 'ios/ipad') return 'ipad';
   return 'android-phone';
+}
+
+/** Map device chip id → canonical store key for blank boards / export. */
+export function deviceFilterToStore(deviceFilter) {
+  const filter = DEVICE_FILTERS.find((d) => d.id === deviceFilter);
+  const first = filter?.stores?.[0];
+  return resolveStoreKey(first || 'play/phone');
 }
 
 /**

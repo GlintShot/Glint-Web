@@ -19,6 +19,7 @@ export function useCopilotSession({
   patchScreenshotStyle,
   patchScreenshotStyleOnFrame,
   extractTheme,
+  startBlank,
   onDirty,
   getMeta,
 }) {
@@ -47,6 +48,7 @@ export function useCopilotSession({
     patchScreenshotStyle,
     patchScreenshotStyleOnFrame,
     extractTheme,
+    startBlank,
   };
 
   const metaRef = useRef(getMeta);

@@ -58,6 +58,8 @@ export default function FrameCanvas({
   onPainted,
   onDeviceContextMenu,
   paintKey,
+  /** Store default bezel for null-design (scratch) boards. */
+  deviceFrame = null,
 }) {
   const elRef = useRef(null);
   const wrapRef = useRef(null);
@@ -69,6 +71,7 @@ export default function FrameCanvas({
   onPaintedRef.current = onPainted;
   const screenshotRef = useRef(screenshotUrl);
   const designRef = useRef(design);
+  const deviceFrameRef = useRef(deviceFrame);
   const scaleRef = useRef(Math.max(0.05, displayScale));
   const scale = Math.max(0.05, displayScale);
   scaleRef.current = scale;
@@ -77,6 +80,7 @@ export default function FrameCanvas({
   menuRef.current = onDeviceContextMenu;
   screenshotRef.current = screenshotUrl;
   designRef.current = design;
+  deviceFrameRef.current = deviceFrame;
 
   const cssW = Math.max(1, Math.round(canvasWidth * scale));
   const cssH = Math.max(1, Math.round(canvasHeight * scale));
@@ -228,6 +232,7 @@ export default function FrameCanvas({
         signal: ac.signal,
         displayCssWidth: Math.max(1, Math.round(canvasWidth * scaleRef.current)),
         displayCssHeight: Math.max(1, Math.round(canvasHeight * scaleRef.current)),
+        deviceFrame: deviceFrameRef.current,
       };
       try {
         if (fabricJson) {

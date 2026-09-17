@@ -34,6 +34,13 @@ describe('storeCatalog', () => {
     expect(resolveStoreKey('unknown-store')).toBe('play/phone');
   });
 
+  it('maps browse device chips to blank-board stores', async () => {
+    const { deviceFilterToStore } = await import('../../components/StoreBrowseFilters.jsx');
+    expect(deviceFilterToStore('android-phone')).toBe('play/phone');
+    expect(deviceFilterToStore('iphone')).toBe('ios/iphone');
+    expect(deviceFilterToStore('ipad')).toBe('ios/ipad');
+  });
+
   it('keeps already-canonical ids', () => {
     expect(resolveStoreKey('play/wear')).toBe('play/wear');
     expect(resolveStoreKey('ios/ipad')).toBe('ios/ipad');
