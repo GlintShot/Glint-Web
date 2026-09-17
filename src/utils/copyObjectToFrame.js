@@ -1,4 +1,10 @@
 import { util } from 'fabric';
+import { isProtectedLayer } from './layerGuards.js';
+
+/** Objects that may leave their artboard (not device / screenshot shells). */
+export function isCrossFrameTransferable(obj) {
+  return !!obj && !isProtectedLayer(obj);
+}
 
 /**
  * Clone a Fabric object from one canvas and add it to another.
@@ -37,8 +43,27 @@ export async function copyObjectToFrame(sourceCanvas, targetCanvas, object, offs
 export async function copySelectionToFrame(sourceCanvas, targetCanvas, objects, offset = { x: 0, y: 0 }) {
   const results = [];
   for (const obj of objects) {
+    if (!isCrossFrameTransferable(obj)) continue;
     const clone = await copyObjectToFrame(sourceCanvas, targetCanvas, obj, offset);
     if (clone) results.push(clone);
   }
+  return results;
+}
+
+/**
+ * Copy selection onto target, then remove originals from source (Figma-style move).
+ */
+export async function moveSelectionToFrame(sourceCanvas, targetCanvas, objects, offset = { x: 0, y: 0 }) {
+  const transferable = (objects || []).filter(isCrossFrameTransferable);
+  if (!sourceCanvas || !targetCanvas || !transferable.length) return [];
+
+  const results = await copySelectionToFrame(sourceCanvas, targetCanvas, transferable, offset);
+  if (!results.length) return [];
+
+  sourceCanvas.discardActiveObject();
+  for (const obj of transferable) {
+    sourceCanvas.remove(obj);
+  }
+  sourceCanvas.requestRenderAll();
   return results;
 }

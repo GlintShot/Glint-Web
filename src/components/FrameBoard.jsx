@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import FrameCanvas from './FrameCanvas';
 import { MAX_FRAMES, MIN_FRAMES } from '../hooks/useFrames';
 import { readDroppedScreenshotUrl } from '../utils/assetLibrary';
+import { getStoreTarget } from '../utils/storeCatalog';
 
 /**
  * AppLaunchpad-style board: horizontal row of clipped Frame artboards.
@@ -33,6 +34,10 @@ export default function FrameBoard({
   showFrameChrome = false,
   /** Frame index the Copilot agent is currently acting on (telepresence). */
   agentFrameIndex = null,
+  /** Cross-frame object drag highlight (index or null). */
+  objectDropTarget = null,
+  /** Fallback store when a frame has no `store` (export preset). */
+  store = 'play/phone',
 }) {
   const sizeLabel = `${canvasWidth}×${canvasHeight}`;
   const scale = fitScale / 100;
@@ -42,6 +47,7 @@ export default function FrameBoard({
   const boardPadX = Math.max(12, Math.round(displayW * 0.06));
   const scrollRef = useRef(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const highlightIndex = objectDropTarget ?? dropTarget;
 
   const handleFrameDragOver = (e, index) => {
     const types = Array.from(e.dataTransfer?.types || []);
@@ -163,7 +169,7 @@ export default function FrameBoard({
               <div
                 data-frame-artboard
                 className={`relative overflow-hidden rounded-md bg-glint-surface shrink-0 transition-[box-shadow,opacity,ring] duration-150 ${
-                  dropTarget === i
+                  highlightIndex === i
                     ? 'ring-2 ring-glint-accent ring-offset-2 ring-offset-glint-bg shadow-lg shadow-glint-accent/30'
                     : agentFocus
                       ? 'ring-2 ring-glint-accent glint-copilot-pulse shadow-lg shadow-glint-accent/40'
@@ -186,7 +192,10 @@ export default function FrameBoard({
                   onCanvasReady={onCanvasReady}
                   onPainted={onPainted}
                   onDeviceContextMenu={onDeviceContextMenu}
-                  paintKey={frame.fabricRestoreKey || frame.design?.id || 'nodesign'}
+                  paintKey={`${frame.fabricRestoreKey || frame.design?.id || 'nodesign'}-${frame.store || store}`}
+                  deviceFrame={
+                    getStoreTarget(frame.store || store).defaultFrame
+                  }
                 />
               </div>
 

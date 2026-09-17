@@ -738,7 +738,7 @@ export default function PropertiesPanel({
                     type="button"
                     onClick={onCopyToFrame}
                     className="px-2.5 py-2 rounded-lg border border-glint-border text-glint-text-secondary hover:text-glint-accent hover:bg-glint-surface-2"
-                    title="Copy to another frame"
+                    title="Copy or move to another frame"
                   >
                     <Copy size={14} />
                   </button>
