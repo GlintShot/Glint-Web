@@ -489,7 +489,7 @@ export default function PropertiesPanel({
                     type="button"
                     onClick={() => patchStyle({ fitMode: opt.id })}
                     className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
-                      (style.fitMode || 'cover') === opt.id
+                      (style.fitMode || 'contain') === opt.id
                         ? 'bg-glint-accent text-glint-text-on-accent'
                         : 'bg-glint-surface-2 text-glint-text-secondary hover:text-glint-text'
                     }`}
@@ -518,7 +518,7 @@ export default function PropertiesPanel({
               )}
               <p className="text-[9px] text-glint-text-tertiary">
                 {style.fitMode === 'cover' && 'Crops to fill screen - no white bars'}
-                {style.fitMode === 'contain' && 'Shows full screenshot - may have white bars'}
+                {(style.fitMode || 'contain') === 'contain' && 'Shows full screenshot inside frame - no border crop'}
                 {style.fitMode === 'custom' && 'Drag to choose which part is visible'}
               </p>
             </Section>

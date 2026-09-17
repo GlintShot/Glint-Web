@@ -344,7 +344,7 @@ function applyOuterBorderStroke(group, chrome = {}) {
  * Cover-fit a screenshot into an exact screen-sized bitmap (white fill + clipped image).
  * Disabled status bar → shot fills the full hole. Enabled → opaque status strip on top,
  * shot cover-fills only the remaining content rect. Status bar chrome matches the device family.
- * chrome.fitMode: 'cover' (default, crops to fill) | 'contain' (no crop, white bars) | 'custom' (manual offset)
+ * chrome.fitMode: 'contain' (default, full shot inside hole) | 'cover' (crops to fill) | 'custom'
  * chrome.fitOffsetX/Y: offset for 'custom' mode (-1 to 1, 0 = centered)
  */
 async function buildScreenBitmap(screenshotUrl, screenW, screenH, rx, chrome = {}, frameId = null) {
@@ -352,7 +352,7 @@ async function buildScreenBitmap(screenshotUrl, screenW, screenH, rx, chrome = {
   const h = Math.max(1, Math.round(screenH));
   const r = Math.max(0, Math.min(rx || 0, w / 2, h / 2));
   const content = screenContentRect(w, h, chrome, frameId);
-  const fitMode = chrome.fitMode || 'cover';
+  const fitMode = chrome.fitMode || 'contain';
 
   const src = await FabricImage.fromURL(screenshotUrl, { crossOrigin: 'anonymous' });
   const el = src.getElement?.() || src._element;
@@ -741,6 +741,43 @@ async function buildFramedDeviceBitmap(screenshotUrl, frameId, chrome = {}) {
     ctx.imageSmoothingEnabled = true;
   }
 
+  // Silhouette from real frame alpha (flood-fill hole) so corners never bleed.
+  const mask = document.createElement('canvas');
+  mask.width = W;
+  mask.height = H;
+  const mctx = mask.getContext('2d');
+  if (bezelEl) mctx.drawImage(bezelEl, 0, 0, W, H);
+  const src = mctx.getImageData(0, 0, W, H);
+  const d = src.data;
+  const out = mctx.createImageData(W, H);
+  const o = out.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] > 0) {
+      o[i] = o[i + 1] = o[i + 2] = 255;
+      o[i + 3] = 255;
+    }
+  }
+  const seedX = Math.round(sx + screenW / 2);
+  const seedY = Math.round(sy + screenH / 2);
+  const stack = [[seedX, seedY]];
+  const seen = new Uint8Array(W * H);
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const idx = y * W + x;
+    if (seen[idx]) continue;
+    seen[idx] = 1;
+    const p = idx * 4;
+    if (d[p + 3] > 0) continue;
+    o[p] = o[p + 1] = o[p + 2] = 255;
+    o[p + 3] = 255;
+    stack.push([x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]);
+  }
+  mctx.putImageData(out, 0, 0);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(mask, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+
   const fitted = await FabricImage.fromURL(off.toDataURL('image/png'));
   fitted.set({
     left: 0,
@@ -1108,7 +1145,7 @@ export async function replaceDeviceFrame(group, nextFrameId, screenshotUrlOverri
 /**
  * Composite screenshot inside device frame.
  * Screen + bezel are baked into one bitmap at native size, then scaled as a unit
- * so the shot always cover-fills and stays aligned with the hole.
+ * so the shot contain-fits inside the hole (full shot borders; optional cover via chrome.fitMode).
  */
 export async function addFramedScreenshot(canvas, screenshotUrl, frameId, opts = {}) {
   const targetScale = opts.scale ?? 0.55;
