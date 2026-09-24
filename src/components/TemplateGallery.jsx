@@ -50,9 +50,6 @@ export default function TemplateGallery({ onChange, activeStore, onStartBlank })
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] text-glint-text-tertiary leading-relaxed">
-        Pick a platform, then choose a template. Export uses that canvas size.
-      </p>
       <DeviceBrowseFilters
         device={deviceFilter}
         onDeviceChange={handleDeviceChange}
