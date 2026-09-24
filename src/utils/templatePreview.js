@@ -42,7 +42,9 @@ export async function renderTemplateStrip(template, { multiplier = 0.22 } = {}) 
     }
 
     try {
-      const dataUrl = await renderTemplateFrame(slideTemplate, chunk, {}, themes);
+      const dataUrl = await renderTemplateFrame(slideTemplate, chunk, {}, themes, {
+        skipLive3d: true,
+      });
       // Downscale for strip thumbnails (same composition, smaller bytes).
       urls.push(await downscaleDataUrl(dataUrl, multiplier));
     } catch {
