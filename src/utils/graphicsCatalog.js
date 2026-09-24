@@ -10,15 +10,157 @@ function labelFromFilename(file) {
 const DEFAULT_PLACEMENT = { left: 80, top: 400, width: 120 };
 
 function icon(id, src, label, use) {
-  return { id, src: `icons/${src}`, label: label || labelFromFilename(src), use: use || '', defaultPlacement: { ...DEFAULT_PLACEMENT } };
+  return {
+    id,
+    src: `icons/${src}`,
+    label: label || labelFromFilename(src),
+    use: use || '',
+    mono: true,
+    defaultPlacement: { ...DEFAULT_PLACEMENT },
+  };
 }
 
 function brand(id, src, label) {
-  return { id, src: `brands/${src}`, label: label || labelFromFilename(src), defaultPlacement: { ...DEFAULT_PLACEMENT } };
+  return {
+    id,
+    src: `brands/${src}`,
+    label: label || labelFromFilename(src),
+    mono: true,
+    defaultPlacement: { ...DEFAULT_PLACEMENT },
+  };
 }
 
 function shape(id, src, label) {
-  return { id, src: `shapes/${src}`, label: label || labelFromFilename(src), defaultPlacement: { ...DEFAULT_PLACEMENT } };
+  return {
+    id,
+    src: `shapes/${src}`,
+    label: label || labelFromFilename(src),
+    mono: true,
+    defaultPlacement: { ...DEFAULT_PLACEMENT },
+  };
+}
+
+function blob(id, src, label, placement) {
+  return {
+    id,
+    src: `blobs/${src}`,
+    label: label || labelFromFilename(src),
+    mono: false,
+    defaultPlacement: { ...(placement || { left: -40, top: 200, width: 520 }) },
+    credit: creditOf('glint'),
+  };
+}
+
+function badge(id, src, label, placement) {
+  return {
+    id,
+    src: `badges/${src}`,
+    label: label || labelFromFilename(src),
+    mono: false,
+    defaultPlacement: { ...(placement || { left: 80, top: 120, width: 280 }) },
+    credit: creditOf('glint'),
+  };
+}
+
+function illustration(id, src, label, placement, credit) {
+  return {
+    id,
+    src: src.includes('/') ? src : `illustrations/${src}`,
+    label: label || labelFromFilename(src.split('/').pop()),
+    mono: false,
+    defaultPlacement: { ...(placement || { left: 60, top: 160, width: 280 }) },
+    credit: credit || null,
+  };
+}
+
+/** Colorful accent pack entry (hands, charts, promo, color icons, …). */
+function accent(id, src, label, placement, creditKey = 'glint') {
+  return {
+    id,
+    src,
+    label: label || labelFromFilename(src.split('/').pop()),
+    mono: false,
+    defaultPlacement: { ...(placement || { left: 80, top: 160, width: 200 }) },
+    credit: creditOf(creditKey),
+  };
+}
+
+/** Shared credit cards for third-party packs (shown on hover in GraphicPicker). */
+export const GRAPHIC_CREDITS = {
+  glint: {
+    collection: 'Glint',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Original Glint artwork',
+  },
+  humaaans: {
+    collection: 'Humaaans',
+    author: 'Pablo Stanley',
+    license: 'CC0',
+    url: 'https://www.humaaans.com/',
+    blurb: 'Mix-&-match people illustrations',
+  },
+  undraw: {
+    collection: 'unDraw',
+    author: 'Katerina Limpitsouni',
+    license: 'MIT',
+    url: 'https://undraw.co/',
+    blurb: 'Open-source illustrations (not used in store packs — too scene-heavy)',
+  },
+  stickers: {
+    collection: 'Stickers',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Tiny accents for store frames (stars, checks, underlines)',
+  },
+  hands: {
+    collection: 'Hands',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Gestures for taps, swipes, and CTAs',
+  },
+  charts: {
+    collection: 'Charts',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Bars, rings, sparklines for growth slides',
+  },
+  notifications: {
+    collection: 'Notifications',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Store-style notification pills',
+  },
+  promo: {
+    collection: 'Promo',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Sale / free / editors-choice chips',
+  },
+  colorIcons: {
+    collection: 'Color Icons',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Filled feature icons — exact color in every theme',
+  },
+  doodles: {
+    collection: 'Doodles',
+    author: 'Glint',
+    license: 'MIT',
+    url: 'https://github.com/darkmintis/Glint-Org',
+    blurb: 'Scribbles and accent marks',
+  },
+};
+
+function creditOf(key) {
+  return GRAPHIC_CREDITS[key] || null;
 }
 
 export const ICONS = [
@@ -225,27 +367,172 @@ export const GRAPHICS = [
   { id: 'spark-mini', src: 'icons/sparkles.svg', label: 'Sparkles', defaultPlacement: { left: 48, top: 120, width: 200 } },
 ];
 
-export const SLOT_COLORS = { a: '#00A', b: '#00B', c: '#00C' };
+export const BLOBS = [
+  blob('blob-organic-1', 'blob-organic-1.svg', 'Organic Blob'),
+  blob('blob-organic-2', 'blob-organic-2.svg', 'Soft Orbs'),
+  blob('blob-wave', 'blob-wave.svg', 'Wave', { left: -40, top: 1400, width: 1160 }),
+  blob('blob-frosted', 'blob-frosted.svg', 'Frosted Glow', { left: 200, top: 400, width: 640 }),
+  blob('blob-cluster', 'blob-cluster.svg', 'Blob Cluster'),
+  blob('blob-hill', 'blob-hill.svg', 'Hill', { left: -20, top: 1500, width: 1120 }),
+];
+
+export const BADGES = [
+  badge('badge-new', 'badge-new.svg', 'New'),
+  badge('badge-rating', 'badge-rating.svg', 'Rating 4.9'),
+  badge('badge-7day', 'badge-7day.svg', '7-Day Free'),
+  badge('badge-verified', 'badge-verified.svg', 'Verified'),
+  badge('badge-notification', 'badge-notification.svg', 'Notification', { left: 80, top: 100, width: 360 }),
+  badge('badge-trending', 'badge-trending.svg', 'Trending'),
+  badge('badge-pro', 'badge-pro.svg', 'Pro', { left: 80, top: 120, width: 140 }),
+  // Promo chips
+  ...[
+    ['promo-sale', '50% Off', { left: 80, top: 100, width: 220 }],
+    ['promo-free', '100% Free', { left: 80, top: 100, width: 200 }],
+    ['promo-hot', 'Hot', { left: 80, top: 100, width: 180 }],
+    ['promo-editors', "Editors' Choice", { left: 80, top: 100, width: 300 }],
+  ].map(([file, label, place]) =>
+    accent(`promo-${file}`, `promo/${file}.svg`, label, place, 'promo'),
+  ),
+  // Notification pills
+  ...[
+    ['notif-export', 'Export Ready', { left: 60, top: 80, width: 420 }],
+    ['notif-update', 'New Update', { left: 60, top: 80, width: 420 }],
+    ['notif-success', 'All Set', { left: 60, top: 80, width: 420 }],
+    ['notif-rating', 'Review Stars', { left: 60, top: 80, width: 420 }],
+  ].map(([file, label, place]) =>
+    accent(file, `notifications/${file}.svg`, label, place, 'notifications'),
+  ),
+];
+
+export const HANDS = [
+  ['hand-point', 'Point'],
+  ['hand-thumbs-up', 'Thumbs Up'],
+  ['hand-wave', 'Wave'],
+  ['hand-swipe', 'Swipe'],
+  ['hand-tap', 'Tap'],
+].map(([file, label]) =>
+  accent(file, `hands/${file}.svg`, label, { left: 80, top: 900, width: 220 }, 'hands'),
+);
+
+export const CHARTS = [
+  ['chart-bars', 'Bar Chart', { left: 80, top: 200, width: 360 }],
+  ['chart-ring', 'Progress Ring', { left: 100, top: 200, width: 280 }],
+  ['chart-sparkline', 'Sparkline', { left: 80, top: 200, width: 400 }],
+  ['chart-growth', 'Growth', { left: 80, top: 200, width: 360 }],
+].map(([file, label, place]) =>
+  accent(file, `charts/${file}.svg`, label, place, 'charts'),
+);
+
+export const COLOR_ICONS = [
+  ['ci-zap', 'Zap'],
+  ['ci-lock', 'Lock'],
+  ['ci-cloud', 'Cloud'],
+  ['ci-share', 'Share'],
+  ['ci-shield', 'Shield'],
+  ['ci-heart', 'Heart'],
+  ['ci-star', 'Star'],
+  ['ci-rocket', 'Rocket'],
+].map(([file, label]) =>
+  accent(file, `color-icons/${file}.svg`, label, { left: 80, top: 160, width: 120 }, 'colorIcons'),
+);
+
+export const ILLUSTRATIONS = [
+  // Glint originals (lightweight)
+  illustration('illust-spark-burst', 'illustrations/illust-spark-burst.svg', 'Spark Burst', null, creditOf('glint')),
+  illustration('illust-chat-bubbles', 'illustrations/illust-chat-bubbles.svg', 'Chat Bubbles', null, creditOf('glint')),
+  illustration('illust-mountain', 'illustrations/illust-mountain.svg', 'Mountain', null, creditOf('glint')),
+  illustration('illust-person-wave', 'illustrations/illust-person-wave.svg', 'Person Wave', null, creditOf('glint')),
+  illustration('illust-stars-orbit', 'illustrations/illust-stars-orbit.svg', 'Stars Orbit', null, creditOf('glint')),
+  illustration('illust-rocket', 'illustrations/illust-rocket.svg', 'Rocket', null, creditOf('glint')),
+  illustration('illust-heart-float', 'illustrations/illust-heart-float.svg', 'Heart Float', null, creditOf('glint')),
+  // Stickers — tiny accents for store frames (not scene mockups)
+  ...[
+    ['sticker-stars-row', 'Stars Row', { left: 80, top: 100, width: 280 }],
+    ['sticker-sparkle', 'Sparkle', { left: 80, top: 120, width: 100 }],
+    ['sticker-underline', 'Underline', { left: 100, top: 280, width: 360 }],
+    ['sticker-arrow-curve', 'Curve Arrow', { left: 80, top: 200, width: 160 }],
+    ['sticker-check', 'Check', { left: 80, top: 120, width: 96 }],
+    ['sticker-heart', 'Heart', { left: 80, top: 120, width: 96 }],
+    ['sticker-confetti', 'Confetti', { left: 60, top: 100, width: 200 }],
+    ['sticker-burst', 'Burst', { left: 80, top: 100, width: 120 }],
+    ['sticker-dot-ring', 'Dot Ring', { left: 80, top: 140, width: 140 }],
+    ['sticker-wiggle', 'Wiggle', { left: 100, top: 260, width: 320 }],
+  ].map(([file, label, place]) =>
+    illustration(file, `stickers/${file}.svg`, label, place, creditOf('stickers')),
+  ),
+  // Doodle accents
+  ...[
+    ['doodle-scribble', 'Scribble', { left: 80, top: 240, width: 320 }],
+    ['doodle-circle', 'Circle', { left: 80, top: 160, width: 140 }],
+    ['doodle-exclaim', 'Exclaim', { left: 80, top: 120, width: 80 }],
+  ].map(([file, label, place]) =>
+    illustration(file, `doodles/${file}.svg`, label, place, creditOf('doodles')),
+  ),
+  // Humaaans (CC0) — people beside devices; useful on store frames
+  ...[
+    'sitting-1', 'sitting-2', 'sitting-3', 'sitting-4', 'sitting-5', 'sitting-6', 'sitting-7', 'sitting-8',
+    'standing-1', 'standing-2', 'standing-3', 'standing-4', 'standing-5', 'standing-6', 'standing-7',
+    'standing-8', 'standing-9', 'standing-10', 'standing-11', 'standing-12', 'standing-13', 'standing-14',
+    'standing-15', 'standing-16', 'standing-17', 'standing-18', 'standing-19', 'standing-20',
+    'standing-21', 'standing-22', 'standing-23', 'standing-24',
+  ].map((file) =>
+    illustration(
+      `humaaans-${file}`,
+      `humaaans/${file}.svg`,
+      file.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      file.startsWith('sitting')
+        ? { left: 80, top: 200, width: 340 }
+        : { left: 80, top: 160, width: 300 },
+      creditOf('humaaans'),
+    ),
+  ),
+];
+
+/** Stickers + doodle accents for store frames. */
+export const STICKERS = ILLUSTRATIONS.filter(
+  (g) => g.credit?.collection === 'Stickers' || g.credit?.collection === 'Doodles',
+);
+
+export function creditLabel(credit) {
+  if (!credit) return '';
+  return `${credit.collection} · ${credit.author} · ${credit.license}`;
+}
+
+export function illustrationsByCollection(collection) {
+  if (!collection || collection === 'all') return ILLUSTRATIONS;
+  return ILLUSTRATIONS.filter((g) => g.credit?.collection === collection);
+}
+
+export const SLOT_COLORS = { a: '#FF6B4A', b: '#FFD166', c: '#FFF7F2' };
+
+const ALL_CATALOGS = [
+  ICONS,
+  BRANDS,
+  SHAPES_SVG,
+  BLOBS,
+  BADGES,
+  HANDS,
+  CHARTS,
+  COLOR_ICONS,
+  ILLUSTRATIONS,
+  GRAPHICS,
+];
 
 export function getGraphicById(id) {
-  return (
-    ICONS.find((g) => g.id === id) ||
-    BRANDS.find((g) => g.id === id) ||
-    SHAPES_SVG.find((g) => g.id === id) ||
-    GRAPHICS.find((g) => g.id === id) ||
-    null
-  );
+  for (const list of ALL_CATALOGS) {
+    const hit = list.find((g) => g.id === id);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 export function getGraphicBySrc(src) {
   const file = (src || '').split('/').pop();
-  return (
-    ICONS.find((g) => g.src.endsWith(file)) ||
-    BRANDS.find((g) => g.src.endsWith(file)) ||
-    SHAPES_SVG.find((g) => g.src.endsWith(file)) ||
-    GRAPHICS.find((g) => g.src.endsWith(file)) ||
-    null
-  );
+  for (const list of ALL_CATALOGS) {
+    const hit = list.find((g) => g.src.endsWith(file));
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // ─── Color contrast helpers ─────────────────────────────────────────────────
