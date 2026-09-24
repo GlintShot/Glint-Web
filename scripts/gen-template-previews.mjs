@@ -14,6 +14,10 @@
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createCanvas, loadImage } from 'canvas';
+import {
+  mergeTemplateFamily,
+  TEMPLATE_FAMILY_PATHS,
+} from '../src/utils/templateFamily.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const TEMPLATES_DIR = join(ROOT, 'public', 'templates');
@@ -27,6 +31,15 @@ const SLIDE_GAP = 8;
 
 const DEFAULT_WIDTH = 1080;
 const DEFAULT_HEIGHT = 1920;
+
+/** CLI: `npm run generate:previews` or `… --only noir-orbit-ios,aurora-soft-play` */
+const ONLY = new Set(
+  (process.argv.find((a) => a.startsWith('--only=')) || '')
+    .replace('--only=', '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 if (!existsSync(PREVIEWS_DIR)) {
   mkdirSync(PREVIEWS_DIR, { recursive: true });
@@ -99,9 +112,9 @@ async function loadTintedSvg(src, fills = {}) {
   const fc = fills.c || '#FFFFFF';
 
   xml = xml
-    .replace(/(#A10000|#0000AA|#00A\b)/gi, fa)
-    .replace(/(#B10000|#0000BB|#00B\b)/gi, fb)
-    .replace(/(#C10000|#0000CC|#00C\b)/gi, fc);
+    .replace(/(#A10000|#0000AA|#00A\b|#FF6B4A)/gi, fa)
+    .replace(/(#B10000|#0000BB|#00B\b|#FFD166)/gi, fb)
+    .replace(/(#C10000|#0000CC|#00C\b|#FFF7F2)/gi, fc);
 
   try {
     const img = await loadImage(Buffer.from(xml));
@@ -342,8 +355,9 @@ async function renderSlide(ctx, slide, canvasW, canvasH, fallbackBg, slideIndex)
         const frameId = layer.frame || 'pixel9';
         const frameData = await loadFrame(frameId);
         const meta = frameData?.meta || FRAME_INSETS[frameId] || FRAME_INSETS.pixel9;
+        const live3d = layer.deviceMode === 'live3d';
 
-        const coverage = Math.min(0.92, Math.max(0.4, layer.scale ?? 0.6));
+        const coverage = Math.min(0.92, Math.max(0.4, layer.scale ?? layer.widthFraction ?? 0.6));
         const unitScale = Math.min((canvasW * coverage) / meta.width, (canvasH * coverage) / meta.height);
         const scale = unitScale * RENDER_SCALE;
 
@@ -358,20 +372,27 @@ async function renderSlide(ctx, slide, canvasW, canvasH, fallbackBg, slideIndex)
         let top = (layer.marginTop ?? 100) * RENDER_SCALE;
         if (layer.position === 'bottom') top = canvasH * RENDER_SCALE - frameH - (layer.marginBottom ?? 80) * RENDER_SCALE;
 
+        // Live 3D gallery look: stronger yaw + slight foreshortening (no WebGL in Node).
+        const angleDeg = live3d
+          ? (layer.orbitYaw != null ? layer.orbitYaw * 0.45 : layer.angle ?? -22)
+          : (layer.angle || 0);
+        const foreshortenY = live3d ? 0.9 : 1;
+
         ctx.save();
-        if (layer.angle) {
-          ctx.translate(left + frameW / 2, top + frameH / 2);
-          ctx.rotate((layer.angle * Math.PI) / 180);
-          ctx.translate(-frameW / 2, -frameH / 2);
-          left = 0;
-          top = 0;
+        ctx.translate(left + frameW / 2, top + frameH / 2);
+        if (angleDeg) ctx.rotate((angleDeg * Math.PI) / 180);
+        if (live3d) {
+          // Mild perspective skew so hero slides read as ¾ without loading Device3DScene.
+          ctx.transform(1, 0, angleDeg > 0 ? 0.12 : -0.12, foreshortenY, 0, 0);
         }
+        ctx.translate(-frameW / 2, -frameH / 2);
 
         // Draw Device Shadow
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur = 32 * RENDER_SCALE;
-        ctx.shadowOffsetY = 16 * RENDER_SCALE;
+        ctx.shadowColor = live3d ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = (live3d ? 48 : 32) * RENDER_SCALE;
+        ctx.shadowOffsetY = (live3d ? 24 : 16) * RENDER_SCALE;
+        ctx.shadowOffsetX = live3d ? (angleDeg > 0 ? 12 : -12) * RENDER_SCALE : 0;
 
         const insetL = meta.left * scale;
         const insetT = meta.top * scale;
@@ -382,48 +403,48 @@ async function renderSlide(ctx, slide, canvasW, canvasH, fallbackBg, slideIndex)
         const rx = (meta.rx || 60) * scale;
 
         // Draw Screen background (mock UI placeholder)
-        roundRect(ctx, left + insetL, top + insetT, screenW, screenH, rx);
+        roundRect(ctx, insetL, insetT, screenW, screenH, rx);
         ctx.fillStyle = '#FFFFFF';
         ctx.fill();
         ctx.restore();
 
         // Draw subtle screen mock UI (top bar + cards)
         ctx.save();
-        roundRect(ctx, left + insetL, top + insetT, screenW, screenH, rx);
+        roundRect(ctx, insetL, insetT, screenW, screenH, rx);
         ctx.clip();
 
         // Screen subtle gradient
-        const screenGrad = ctx.createLinearGradient(0, top + insetT, 0, top + insetT + screenH);
+        const screenGrad = ctx.createLinearGradient(0, insetT, 0, insetT + screenH);
         screenGrad.addColorStop(0, '#FAFAFA');
         screenGrad.addColorStop(1, '#F0F2F5');
         ctx.fillStyle = screenGrad;
-        ctx.fillRect(left + insetL, top + insetT, screenW, screenH);
+        ctx.fillRect(insetL, insetT, screenW, screenH);
 
         // Top app bar mock
         ctx.fillStyle = '#E4E7EB';
-        ctx.fillRect(left + insetL + 20 * RENDER_SCALE, top + insetT + 36 * RENDER_SCALE, screenW - 40 * RENDER_SCALE, 30 * RENDER_SCALE);
+        ctx.fillRect(insetL + 20 * RENDER_SCALE, insetT + 36 * RENDER_SCALE, screenW - 40 * RENDER_SCALE, 30 * RENDER_SCALE);
 
         // Hero card mock
         const cardH = screenH * 0.42;
-        const cardGrad = ctx.createLinearGradient(0, top + insetT + 80 * RENDER_SCALE, 0, top + insetT + 80 * RENDER_SCALE + cardH);
+        const cardGrad = ctx.createLinearGradient(0, insetT + 80 * RENDER_SCALE, 0, insetT + 80 * RENDER_SCALE + cardH);
         cardGrad.addColorStop(0, bgColor);
         cardGrad.addColorStop(1, mix(bgColor, '#000000', 0.2));
         ctx.fillStyle = cardGrad;
-        roundRect(ctx, left + insetL + 20 * RENDER_SCALE, top + insetT + 80 * RENDER_SCALE, screenW - 40 * RENDER_SCALE, cardH, 16 * RENDER_SCALE);
+        roundRect(ctx, insetL + 20 * RENDER_SCALE, insetT + 80 * RENDER_SCALE, screenW - 40 * RENDER_SCALE, cardH, 16 * RENDER_SCALE);
         ctx.fill();
 
         // Secondary cards mock
         ctx.fillStyle = '#E8ECEF';
-        roundRect(ctx, left + insetL + 20 * RENDER_SCALE, top + insetT + 95 * RENDER_SCALE + cardH, screenW - 40 * RENDER_SCALE, 45 * RENDER_SCALE, 12 * RENDER_SCALE);
+        roundRect(ctx, insetL + 20 * RENDER_SCALE, insetT + 95 * RENDER_SCALE + cardH, screenW - 40 * RENDER_SCALE, 45 * RENDER_SCALE, 12 * RENDER_SCALE);
         ctx.fill();
-        roundRect(ctx, left + insetL + 20 * RENDER_SCALE, top + insetT + 150 * RENDER_SCALE + cardH, screenW - 40 * RENDER_SCALE, 45 * RENDER_SCALE, 12 * RENDER_SCALE);
+        roundRect(ctx, insetL + 20 * RENDER_SCALE, insetT + 150 * RENDER_SCALE + cardH, screenW - 40 * RENDER_SCALE, 45 * RENDER_SCALE, 12 * RENDER_SCALE);
         ctx.fill();
 
         ctx.restore();
 
         // Draw Bezel Frame Overlay
         if (frameData?.img) {
-          ctx.drawImage(frameData.img, left, top, frameW, frameH);
+          ctx.drawImage(frameData.img, 0, 0, frameW, frameH);
         }
 
         ctx.restore();
@@ -541,26 +562,54 @@ async function renderTemplate(template) {
   return strip.toBuffer('image/png');
 }
 
-async function main() {
-  console.log('Glint Template Preview Generator (Pixel-Perfect)');
-  console.log('================================================\n');
+function loadJson(path) {
+  return JSON.parse(readFileSync(path, 'utf-8'));
+}
 
-  const templateFiles = readdirSync(TEMPLATES_DIR)
+/** Flat JSON or family (common + platform) → engine template. */
+function loadTemplateForPreview(templateId) {
+  const fam = TEMPLATE_FAMILY_PATHS[templateId];
+  if (fam) {
+    const commonPath = join(TEMPLATES_DIR, fam.family, 'common.json');
+    const platformPath = join(TEMPLATES_DIR, fam.family, `${fam.platform}.json`);
+    if (!existsSync(commonPath) || !existsSync(platformPath)) {
+      throw new Error(`family files missing for ${templateId}`);
+    }
+    return mergeTemplateFamily(loadJson(commonPath), loadJson(platformPath));
+  }
+  const flatPath = join(TEMPLATES_DIR, `${templateId}.json`);
+  if (!existsSync(flatPath)) throw new Error(`missing ${templateId}.json`);
+  return loadJson(flatPath);
+}
+
+function discoverTemplateIds() {
+  const flat = readdirSync(TEMPLATES_DIR)
     .filter((f) => f.endsWith('.json') && f !== 'config.json')
-    .sort();
+    .map((f) => f.replace(/\.json$/, ''));
+  const family = Object.keys(TEMPLATE_FAMILY_PATHS);
+  const ids = [...new Set([...flat, ...family])].sort();
+  if (ONLY.size) return ids.filter((id) => ONLY.has(id));
+  return ids;
+}
 
-  console.log(`Found ${templateFiles.length} templates\n`);
+async function main() {
+  console.log('Glint Template Preview Generator');
+  console.log('================================\n');
+
+  const templateIds = discoverTemplateIds();
+  console.log(`Found ${templateIds.length} templates (flat + families)\n`);
 
   let generated = 0;
+  let skipped = 0;
   let failed = 0;
 
-  for (const file of templateFiles) {
-    const templateId = file.replace('.json', '');
+  for (const templateId of templateIds) {
     const outputPath = join(PREVIEWS_DIR, `${templateId}.png`);
 
     try {
-      const template = JSON.parse(readFileSync(join(TEMPLATES_DIR, file), 'utf-8'));
-      process.stdout.write(`  ${templateId.padEnd(22)} `);
+      const template = loadTemplateForPreview(templateId);
+      if (!template.id) template.id = templateId;
+      process.stdout.write(`  ${templateId.padEnd(24)} `);
 
       const buffer = await renderTemplate(template);
       writeFileSync(outputPath, buffer);
@@ -573,7 +622,7 @@ async function main() {
     }
   }
 
-  console.log(`\nDone: ${generated} generated, 0 skipped, ${failed} failed`);
+  console.log(`\nDone: ${generated} generated, ${skipped} skipped, ${failed} failed`);
   console.log(`Output: ${PREVIEWS_DIR}`);
 }
 

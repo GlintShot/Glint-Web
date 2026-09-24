@@ -1,21 +1,18 @@
 # Static template preview strips
 
-Drop one image per template id here for fast gallery/home tiles.
+One PNG per template id for fast Home / gallery tiles (no Fabric, no WebGL).
 
 | File | Example |
 |------|---------|
-| `{template-id}.webp` (preferred) | `blink-play.webp` |
-| `{template-id}.png` | `warm-glow-ios.png` |
-| `{template-id}.jpg` | `mint-tags-play.jpg` |
+| `{template-id}.png` | `noir-orbit-ios.png`, `aurora-soft-play.png` |
 
-Exact store aspect, all frames side-by-side (Figma export). When present, Glint Web uses the static file; otherwise it live-renders with Fabric.
-
-Generate drafts after a production build:
+Generate / refresh (Node `canvas` — no Playwright):
 
 ```bash
 cd Glint-Web
-npm run build
 npm run generate:previews
+# optional: only specific ids
+node scripts/gen-template-previews.mjs --only=noir-orbit-ios,aurora-soft-play
 ```
 
-Requires Playwright (`npx playwright install chromium`) for the generator script.
+The script discovers flat `templates/*.json` **and** family packs (`TEMPLATE_FAMILY_PATHS`). Live-3D slides get an angled foreshortened device draw so strips match the hero look without baking WebGL.
