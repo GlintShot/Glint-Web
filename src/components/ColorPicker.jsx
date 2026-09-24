@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pipette } from 'lucide-react';
 import { openCanvasEyedropper } from '../utils/eyedropper';
+import { brandKitAsPresets, loadBrandKit } from '../utils/brandKit';
 
 /** Figma-like presets for fills, text, and strokes. */
 export const COLOR_PRESETS = [
@@ -27,6 +28,7 @@ export default function ColorPicker({ label, value, onChange, getCanvases }) {
   const hex = toHex(value);
   const [picking, setPicking] = useState(false);
   const inputId = `glint-color-${String(label || 'color').replace(/\s+/g, '-')}`;
+  const brandPresets = useMemo(() => brandKitAsPresets(loadBrandKit()), [picking, value]);
 
   const pickColor = async () => {
     setPicking(true);
@@ -85,6 +87,16 @@ export default function ColorPicker({ label, value, onChange, getCanvases }) {
         </button>
       </div>
       <div className="flex flex-wrap gap-1">
+        {brandPresets.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            title={`${b.label} ${b.color}`}
+            onClick={() => onChange(b.color)}
+            className={`w-4 h-4 rounded-full border ${hex.toUpperCase() === b.color ? 'border-glint-accent ring-1 ring-glint-accent' : 'border-black/20'}`}
+            style={{ background: b.color }}
+          />
+        ))}
         {COLOR_PRESETS.map((c) => (
           <button
             key={c}
