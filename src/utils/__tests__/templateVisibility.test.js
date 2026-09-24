@@ -7,18 +7,24 @@ import {
 } from '../templateLoader.js';
 
 describe('template visibility', () => {
-  it('enables only the six gallery packs', () => {
+  it('enables twelve gallery packs', () => {
     const on = Object.entries(TEMPLATE_ENABLED)
       .filter(([, v]) => v)
       .map(([id]) => id)
       .sort();
     expect(on).toEqual([
+      'aurora-soft-ios',
+      'aurora-soft-play',
+      'aurora-soft-tablet',
       'blink-ios',
       'blink-play',
       'blink-tablet',
       'glint-gold-ios',
       'glint-gold-ipad',
       'glint-gold-play',
+      'noir-orbit-ios',
+      'noir-orbit-play',
+      'noir-orbit-tablet',
     ]);
     expect(visibleTemplateIds().sort()).toEqual(on);
   });
