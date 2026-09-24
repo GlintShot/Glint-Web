@@ -1,0 +1,39 @@
+{
+  "id": "noir-orbit-play",
+  "extends": "common",
+  "description": "Noir Orbit - Play Store phone",
+  "store": "play/phone",
+  "canvas": { "width": 1080, "height": 1920 },
+  "device": { "frame": "pixel9", "widthFraction": 0.72 },
+  "preview": { "frame": "pixel9" },
+  "layout": {
+    "Hero": {
+      "graphic1": { "left": -80, "top": -100, "width": 760 },
+      "badge": { "left": 80, "top": 110, "width": 120 },
+      "title": { "fontSize": 64, "marginTop": 180 },
+      "tagline": { "fontSize": 28, "marginTop": 300 },
+      "device": { "marginTop": 400, "angle": -22, "widthFraction": 0.72 }
+    },
+    "Sharp": {
+      "graphic1": { "left": 820, "top": 140, "width": 180 },
+      "title": { "fontSize": 56, "marginTop": 140 },
+      "device": { "marginTop": 360, "angle": 14, "widthFraction": 0.7 }
+    },
+    "Angle": {
+      "badge": { "left": 60, "top": 120, "width": 220 },
+      "title": { "fontSize": 56, "marginTop": 200 },
+      "device": { "marginTop": 380, "angle": -18, "widthFraction": 0.7 }
+    },
+    "Metal": {
+      "graphic1": { "left": -40, "top": 1480, "width": 1160 },
+      "title": { "fontSize": 56, "marginTop": 140 },
+      "device": { "marginTop": 360, "angle": 12, "widthFraction": 0.7 }
+    },
+    "Cinema": {
+      "badge": { "left": 60, "top": 100, "width": 340 },
+      "title": { "fontSize": 56, "marginTop": 200 },
+      "tagline": { "fontSize": 26, "marginTop": 300 },
+      "device": { "marginTop": 400, "angle": -10, "widthFraction": 0.72 }
+    }
+  }
+}

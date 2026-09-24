@@ -1,0 +1,39 @@
+{
+  "id": "noir-orbit-ios",
+  "extends": "common",
+  "description": "Noir Orbit - App Store iPhone",
+  "store": "ios/iphone",
+  "canvas": { "width": 1290, "height": 2796 },
+  "device": { "frame": "iphone16-pro", "widthFraction": 0.72 },
+  "preview": { "frame": "iphone16-pro" },
+  "layout": {
+    "Hero": {
+      "graphic1": { "left": -100, "top": -120, "width": 900 },
+      "badge": { "left": 100, "top": 160, "width": 140 },
+      "title": { "fontSize": 72, "marginTop": 260 },
+      "tagline": { "fontSize": 32, "marginTop": 400 },
+      "device": { "marginTop": 540, "angle": -22, "widthFraction": 0.72 }
+    },
+    "Sharp": {
+      "graphic1": { "left": 980, "top": 220, "width": 220 },
+      "title": { "fontSize": 64, "marginTop": 200 },
+      "device": { "marginTop": 500, "angle": 14, "widthFraction": 0.7 }
+    },
+    "Angle": {
+      "badge": { "left": 80, "top": 180, "width": 260 },
+      "title": { "fontSize": 64, "marginTop": 280 },
+      "device": { "marginTop": 520, "angle": -18, "widthFraction": 0.7 }
+    },
+    "Metal": {
+      "graphic1": { "left": -50, "top": 2200, "width": 1400 },
+      "title": { "fontSize": 64, "marginTop": 200 },
+      "device": { "marginTop": 500, "angle": 12, "widthFraction": 0.7 }
+    },
+    "Cinema": {
+      "badge": { "left": 80, "top": 160, "width": 400 },
+      "title": { "fontSize": 64, "marginTop": 280 },
+      "tagline": { "fontSize": 30, "marginTop": 400 },
+      "device": { "marginTop": 540, "angle": -10, "widthFraction": 0.72 }
+    }
+  }
+}

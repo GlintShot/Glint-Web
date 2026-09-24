@@ -1,0 +1,39 @@
+{
+  "id": "noir-orbit-tablet",
+  "extends": "common",
+  "description": "Noir Orbit - App Store iPad",
+  "store": "ios/ipad",
+  "canvas": { "width": 2048, "height": 2732 },
+  "device": { "frame": "ipad-pro-13", "widthFraction": 0.68 },
+  "preview": { "frame": "ipad-pro-13", "tablet": true },
+  "layout": {
+    "Hero": {
+      "graphic1": { "left": -120, "top": -140, "width": 1200 },
+      "badge": { "left": 120, "top": 140, "width": 160 },
+      "title": { "fontSize": 88, "marginTop": 240 },
+      "tagline": { "fontSize": 40, "marginTop": 400 },
+      "device": { "marginTop": 500, "angle": -22, "widthFraction": 0.68 }
+    },
+    "Sharp": {
+      "graphic1": { "left": 1600, "top": 180, "width": 280 },
+      "title": { "fontSize": 76, "marginTop": 180 },
+      "device": { "marginTop": 460, "angle": 14, "widthFraction": 0.64 }
+    },
+    "Angle": {
+      "badge": { "left": 100, "top": 160, "width": 300 },
+      "title": { "fontSize": 76, "marginTop": 260 },
+      "device": { "marginTop": 480, "angle": -18, "widthFraction": 0.64 }
+    },
+    "Metal": {
+      "graphic1": { "left": -60, "top": 2100, "width": 2200 },
+      "title": { "fontSize": 76, "marginTop": 180 },
+      "device": { "marginTop": 460, "angle": 12, "widthFraction": 0.64 }
+    },
+    "Cinema": {
+      "badge": { "left": 100, "top": 140, "width": 460 },
+      "title": { "fontSize": 76, "marginTop": 240 },
+      "tagline": { "fontSize": 36, "marginTop": 360 },
+      "device": { "marginTop": 500, "angle": -10, "widthFraction": 0.66 }
+    }
+  }
+}

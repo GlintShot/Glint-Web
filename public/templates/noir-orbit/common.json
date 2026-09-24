@@ -1,0 +1,79 @@
+{
+  "familyId": "noir-orbit",
+  "name": "Noir Orbit",
+  "description": "Dark cinematic set with strong ¾ device angles and gold/ice accents",
+  "palette": [
+    { "id": "primary", "label": "Ice", "color": "#E2E8F0" },
+    { "id": "secondary", "label": "Gold", "color": "#F5D06F" },
+    { "id": "accent", "label": "Cyan", "color": "#22D3EE" },
+    { "id": "surface", "label": "Surface", "color": "#1E293B" },
+    { "id": "ink", "label": "Ink", "color": "#0F172A" },
+    { "id": "background", "label": "Background", "color": "#020617" }
+  ],
+  "style": {
+    "fontFamily": "Space Grotesk",
+    "fontWeight": "700",
+    "lineHeight": 1.1
+  },
+  "device": { "position": "center", "minCoverage": 0.5 },
+  "preview": {
+    "bg": "#0F172A",
+    "textColor": "#F5D06F",
+    "art": [
+      { "kind": "blob", "color": "#1E293B", "x": "55%", "y": "-8%", "w": "60%", "h": "35%" },
+      { "kind": "circle", "color": "#F5D06F", "x": "-10%", "y": "75%", "w": "40%", "h": "25%" }
+    ],
+    "headlines": ["Orbit the story", "Dark & sharp", "Hero angle", "Ice & gold", "Export cinema"]
+  },
+  "layers": [{ "type": "background", "color": "#0F172A" }],
+  "slides": [
+    {
+      "name": "Hero",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#020617" },
+        { "role": "graphic1", "type": "graphic", "src": "blobs/blob-organic-2.svg", "fill": "#1E293B", "fill2": "#334155", "fill3": "#0F172A", "opacity": 0.9, "sendToBack": true },
+        { "role": "badge", "type": "graphic", "src": "badges/badge-pro.svg", "fill": "#F5D06F", "fill2": "#F5D06F", "fill3": "#0F172A" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Orbit the story", "color": "#F8FAFC", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "tagline", "type": "subheadline", "position": "top", "placeholder": "Cinematic store frames", "color": "#94A3B8", "fontWeight": "500", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 0, "position": "center", "angle": -22, "deviceMode": "live3d" }
+      ]
+    },
+    {
+      "name": "Sharp",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#0F172A" },
+        { "role": "graphic1", "type": "graphic", "src": "illustrations/illust-stars-orbit.svg", "fill": "#22D3EE", "fill2": "#F5D06F", "fill3": "#E2E8F0" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Dark & sharp", "color": "#F5D06F", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 1, "position": "center", "angle": 14 }
+      ]
+    },
+    {
+      "name": "Angle",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#1E293B" },
+        { "role": "badge", "type": "graphic", "src": "badges/badge-trending.svg", "fill": "#22D3EE", "fill2": "#22D3EE", "fill3": "#0F172A" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Hero angle", "color": "#E2E8F0", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 2, "position": "center", "angle": -18, "deviceMode": "live3d" }
+      ]
+    },
+    {
+      "name": "Metal",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#020617" },
+        { "role": "graphic1", "type": "graphic", "src": "blobs/blob-wave.svg", "fill": "#334155", "fill2": "#1E293B", "fill3": "#020617", "sendToBack": true },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Ice & gold", "color": "#F5D06F", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 3, "position": "center", "angle": 12 }
+      ]
+    },
+    {
+      "name": "Cinema",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#0F172A" },
+        { "role": "badge", "type": "graphic", "src": "badges/badge-notification.svg", "fill": "#1E293B", "fill2": "#22D3EE", "fill3": "#F8FAFC" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Export cinema", "color": "#F8FAFC", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "tagline", "type": "subheadline", "position": "top", "placeholder": "Every size. One zip.", "color": "#94A3B8", "fontWeight": "500", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 4, "position": "center", "angle": -10 }
+      ]
+    }
+  ]
+}
