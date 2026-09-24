@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <rect width="320" height="80" rx="18" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="24" y="36" font-family="system-ui,sans-serif" font-size="18" fill="#F59E0B">★★★★★</text>
+  <text x="24" y="58" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#0F172A">“Best screenshot tool”</text>
+</svg>

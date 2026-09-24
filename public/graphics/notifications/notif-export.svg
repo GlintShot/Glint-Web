@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <rect width="320" height="80" rx="18" fill="#FF6B4A"/>
+  <circle cx="44" cy="40" r="20" fill="#fff" fill-opacity=".2"/>
+  <path stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" d="M44 30v16M36 40l8 8 8-8"/>
+  <text x="78" y="34" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#fff">Export ready</text>
+  <text x="78" y="54" font-family="system-ui,sans-serif" font-size="12" fill="#fff" fill-opacity=".85">5 sizes · just now</text>
+</svg>
