@@ -152,6 +152,49 @@ export function setDeviceAngleDeg(ctx, degrees, frameIndex) {
   return { ok: true, frameIndex: index, angle: Math.round(device.angle || 0) };
 }
 
+export async function setDeviceMode(ctx, mode, frameIndex) {
+  const { canvas, index } = canvasAt(ctx, frameIndex);
+  const device = findDeviceOnCanvas(canvas);
+  if (!device || device.glintRole !== 'framed-screenshot') {
+    return { ok: false, error: 'device_not_found', frameIndex: index };
+  }
+  const live = mode === 'live3d' || mode === 'live';
+  const { setDeviceLiveMode, applyLive3DBakeToDevice } = await import('./device3d/bakeDevice3D.js');
+  const { getOrbitPreset } = await import('./device3d/orbitPresets.js');
+  if (live) {
+    const preset = getOrbitPreset('front-34');
+    setDeviceLiveMode(device, true, { yaw: preset.yaw, pitch: preset.pitch, roll: preset.roll });
+    await applyLive3DBakeToDevice(device);
+  } else {
+    setDeviceLiveMode(device, false);
+    setDeviceAngle(device, 0);
+  }
+  canvas?.requestRenderAll?.();
+  return { ok: true, frameIndex: index, mode: live ? 'live3d' : 'flat' };
+}
+
+export async function setDeviceOrbit(ctx, orbit = {}, frameIndex) {
+  const { canvas, index } = canvasAt(ctx, frameIndex);
+  const device = findDeviceOnCanvas(canvas);
+  if (!device || device.glintRole !== 'framed-screenshot') {
+    return { ok: false, error: 'device_not_found', frameIndex: index };
+  }
+  const { getOrbitPreset } = await import('./device3d/orbitPresets.js');
+  const { applyLive3DBakeToDevice, setDeviceLiveMode } = await import('./device3d/bakeDevice3D.js');
+  let next = { ...(device.glintOrbit || { yaw: 0, pitch: 0, roll: 0 }) };
+  if (orbit.presetId) {
+    const p = getOrbitPreset(orbit.presetId);
+    next = { yaw: p.yaw, pitch: p.pitch, roll: p.roll };
+  }
+  if (orbit.yaw != null) next.yaw = Number(orbit.yaw);
+  if (orbit.pitch != null) next.pitch = Number(orbit.pitch);
+  if (orbit.roll != null) next.roll = Number(orbit.roll);
+  setDeviceLiveMode(device, true, next);
+  await applyLive3DBakeToDevice(device);
+  canvas?.requestRenderAll?.();
+  return { ok: true, frameIndex: index, orbit: next };
+}
+
 /** Replace or clear screenshot. Pass null/empty to clear to white placeholder via ctx. */
 export async function setScreenshot(ctx, url, frameIndex) {
   const { canvas, frame, index } = canvasAt(ctx, frameIndex);
@@ -407,6 +450,8 @@ export const CANVAS_AGENT_OPS = [
   'selectDevice',
   'setDeviceScale',
   'setDeviceAngle',
+  'setDeviceMode',
+  'setDeviceOrbit',
   'setScreenshot',
   'matchDeviceTransform',
   'remapColors',
@@ -435,6 +480,10 @@ export async function runCanvasOp(ctx, op, args = {}) {
       return setDeviceScalePct(ctx, args.pct ?? args.scalePct, args.frameIndex);
     case 'setDeviceAngle':
       return setDeviceAngleDeg(ctx, args.degrees ?? args.angle, args.frameIndex);
+    case 'setDeviceMode':
+      return setDeviceMode(ctx, args.mode ?? args.deviceMode, args.frameIndex);
+    case 'setDeviceOrbit':
+      return setDeviceOrbit(ctx, args, args.frameIndex);
     case 'setScreenshot':
       return setScreenshot(ctx, args.url, args.frameIndex);
     case 'matchDeviceTransform':
