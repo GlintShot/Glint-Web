@@ -15,7 +15,10 @@ import {
   getDeviceDisplaySize,
   setDeviceAngle as applyDeviceAngle,
   setDeviceUniformScale,
+  replaceDeviceScreenshot,
 } from '../utils/canvasEngine';
+import { ORBIT_PRESETS } from '../utils/device3d/orbitPresets';
+import { webglAvailable } from '../utils/device3d/webglProbe';
 
 const FONT_SIZES = [20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 120, 140, 160, 180, 200, 220];
 const WEIGHTS = [
@@ -157,6 +160,11 @@ export default function PropertiesPanel({
   const [deviceScalePct, setDeviceScalePct] = useState(100);
   const [deviceAngleDeg, setDeviceAngleDeg] = useState(0);
   const [deviceSize, setDeviceSize] = useState({ width: 0, height: 0 });
+  const [deviceMode, setDeviceMode] = useState('flat'); // flat | live3d
+  const [orbitYaw, setOrbitYaw] = useState(0);
+  const [orbitPitch, setOrbitPitch] = useState(0);
+  const [orbitRoll, setOrbitRoll] = useState(0);
+  const live3dOk = typeof window !== 'undefined' && webglAvailable();
 
   const syncDeviceSize = (obj) => {
     if (!obj || obj.glintRole !== 'framed-screenshot') return;
@@ -164,6 +172,12 @@ export default function PropertiesPanel({
     setDeviceScalePct(d.scalePct);
     setDeviceSize({ width: d.width, height: d.height });
     setDeviceAngleDeg(Math.round(obj.angle || 0));
+    const mode = obj.glintDeviceMode === 'live3d' ? 'live3d' : 'flat';
+    setDeviceMode(mode);
+    const orbit = obj.glintOrbit || {};
+    setOrbitYaw(Math.round(orbit.yaw || 0));
+    setOrbitPitch(Math.round(orbit.pitch || 0));
+    setOrbitRoll(Math.round(orbit.roll || 0));
   };
 
   const handleDeviceScale = (pct) => {
@@ -180,6 +194,69 @@ export default function PropertiesPanel({
     if (!obj || !canvas) return;
     applyDeviceAngle(obj, deg);
     syncDeviceSize(obj);
+    onDeviceTransform?.();
+  };
+
+  const handleDeviceMode = async (mode) => {
+    const obj = selection?.obj;
+    if (!obj || !canvas) return;
+    const { applyLive3DBakeToDevice, setDeviceLiveMode } = await import(
+      '../utils/device3d/bakeDevice3D'
+    );
+    if (mode === 'live3d') {
+      if (!live3dOk) return;
+      const preset = ORBIT_PRESETS.find((p) => p.id === 'front-34') || ORBIT_PRESETS[0];
+      const orbit = { yaw: preset.yaw, pitch: preset.pitch, roll: preset.roll };
+      setDeviceLiveMode(obj, true, orbit);
+      setDeviceMode('live3d');
+      setOrbitYaw(orbit.yaw);
+      setOrbitPitch(orbit.pitch);
+      setOrbitRoll(orbit.roll);
+      await applyLive3DBakeToDevice(obj);
+    } else {
+      setDeviceLiveMode(obj, false);
+      setDeviceMode('flat');
+      if (obj.glintScreenshotUrl) {
+        await replaceDeviceScreenshot(obj, obj.glintScreenshotUrl);
+      }
+      applyDeviceAngle(obj, 0);
+      setDeviceAngleDeg(0);
+      canvas.requestRenderAll();
+    }
+    onDeviceTransform?.();
+  };
+
+  const handleOrbitPreset = async (preset) => {
+    const obj = selection?.obj;
+    if (!obj || !canvas) return;
+    if (deviceMode === 'live3d') {
+      const { applyLive3DBakeToDevice } = await import('../utils/device3d/bakeDevice3D');
+      const orbit = { yaw: preset.yaw, pitch: preset.pitch, roll: preset.roll };
+      obj.glintOrbit = orbit;
+      setOrbitYaw(orbit.yaw);
+      setOrbitPitch(orbit.pitch);
+      setOrbitRoll(orbit.roll);
+      await applyLive3DBakeToDevice(obj);
+      onDeviceTransform?.();
+      return;
+    }
+    handleDeviceRotation(preset.flatAngle);
+  };
+
+  const handleOrbitAxis = async (axis, value) => {
+    const obj = selection?.obj;
+    if (!obj || deviceMode !== 'live3d') return;
+    const { applyLive3DBakeToDevice } = await import('../utils/device3d/bakeDevice3D');
+    const orbit = {
+      yaw: axis === 'yaw' ? value : orbitYaw,
+      pitch: axis === 'pitch' ? value : orbitPitch,
+      roll: axis === 'roll' ? value : orbitRoll,
+    };
+    if (axis === 'yaw') setOrbitYaw(value);
+    if (axis === 'pitch') setOrbitPitch(value);
+    if (axis === 'roll') setOrbitRoll(value);
+    obj.glintOrbit = orbit;
+    await applyLive3DBakeToDevice(obj);
     onDeviceTransform?.();
   };
 
@@ -418,15 +495,90 @@ export default function PropertiesPanel({
                 <p className="text-[10px] text-glint-text-secondary tabular-nums">
                   {deviceSize.width} × {deviceSize.height} px
                 </p>
-                <RangeRow
-                  label="Rotation"
-                  value={deviceAngleDeg}
-                  min={-180}
-                  max={180}
-                  suffix="°"
-                  onChange={handleDeviceRotation}
-                  onAdjustStart={onDeviceScaleAdjustStart}
-                />
+              </Section>
+            ) : null}
+
+            {selection?.type === 'framed-screenshot' ? (
+              <Section title="3D frames">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] text-glint-text">Enable 3D</p>
+                    <p className="text-[10px] text-glint-text-tertiary">
+                      Same bezel id as Flat — orbit a studio-grade phone shell. Off restores the photo-real PNG.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={deviceMode === 'live3d'}
+                    disabled={!live3dOk && deviceMode !== 'live3d'}
+                    onClick={() => handleDeviceMode(deviceMode === 'live3d' ? 'flat' : 'live3d')}
+                    className={`relative w-10 h-5 rounded-full transition-colors shrink-0 disabled:opacity-40 ${
+                      deviceMode === 'live3d' ? 'bg-glint-accent' : 'bg-glint-border'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                        deviceMode === 'live3d' ? 'translate-x-5' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+                {!live3dOk ? (
+                  <p className="text-[10px] text-glint-warning">WebGL unavailable in this browser.</p>
+                ) : null}
+                {deviceMode === 'flat' ? (
+                  <>
+                    <RangeRow
+                      label="Rotation"
+                      value={deviceAngleDeg}
+                      min={-180}
+                      max={180}
+                      suffix="°"
+                      onChange={handleDeviceRotation}
+                      onAdjustStart={onDeviceScaleAdjustStart}
+                    />
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {ORBIT_PRESETS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          title={p.label}
+                          onClick={() => handleOrbitPreset(p)}
+                          className={`px-1.5 py-0.5 text-[9px] rounded border ${
+                            deviceAngleDeg === p.flatAngle
+                              ? 'border-glint-accent text-glint-accent bg-glint-accent/10'
+                              : 'border-glint-border text-glint-text-secondary hover:border-glint-accent'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-glint-text-tertiary tabular-nums">
+                      Orbit {orbitYaw}° · {orbitPitch}° · {orbitRoll}°
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {ORBIT_PRESETS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          title={p.label}
+                          onClick={() => handleOrbitPreset(p)}
+                          className="px-1.5 py-0.5 text-[9px] rounded border border-glint-border text-glint-text-secondary hover:border-glint-accent"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <RangeRow label="Yaw" value={orbitYaw} min={-90} max={90} suffix="°" onChange={(v) => handleOrbitAxis('yaw', v)} />
+                    <RangeRow label="Pitch" value={orbitPitch} min={-60} max={60} suffix="°" onChange={(v) => handleOrbitAxis('pitch', v)} />
+                    <RangeRow label="Roll" value={orbitRoll} min={-30} max={30} suffix="°" onChange={(v) => handleOrbitAxis('roll', v)} />
+                  </>
+                )}
               </Section>
             ) : null}
 
@@ -526,7 +678,7 @@ export default function PropertiesPanel({
         )}
 
         {rightTab === 'graphics' && (
-          <>
+          <div className="flex flex-col flex-1 min-h-0 gap-3">
             <GraphicPicker onInsert={handleInsertGraphic} />
             {isGraphic && (
               <div className="shrink-0">
@@ -551,7 +703,7 @@ export default function PropertiesPanel({
               </Section>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {rightTab === 'colors' && (
