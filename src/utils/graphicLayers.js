@@ -8,12 +8,18 @@ function walk(obj, fn) {
   kids.forEach((child) => walk(child, fn));
 }
 
+/** Recolor slots — file colors match canvas defaults so the sidebar preview looks real. */
+export const DEFAULT_GRAPHIC_FILLS = { a: '#FF6B4A', b: '#FFD166', c: '#FFFFFF' };
+
 function slotFromColor(value) {
   if (typeof value !== 'string') return '';
   const v = value.trim().toUpperCase();
-  if (v === '#A10000' || v === '#00A' || v === '#0000AA') return 'a';
-  if (v === '#B10000' || v === '#00B' || v === '#0000BB') return 'b';
-  if (v === '#C10000' || v === '#00C' || v === '#0000CC') return 'c';
+  // a: coral (legacy #A10000 + preview default)
+  if (v === '#A10000' || v === '#00A' || v === '#0000AA' || v === '#FF6B4A') return 'a';
+  // b: gold
+  if (v === '#B10000' || v === '#00B' || v === '#0000BB' || v === '#FFD166') return 'b';
+  // c: near-white text slot (not pure #FFF — keeps Humaaans whites fixed)
+  if (v === '#C10000' || v === '#00C' || v === '#0000CC' || v === '#FFF7F2') return 'c';
   return '';
 }
 
@@ -58,9 +64,9 @@ export async function addGraphicLayer(canvas, layer = {}, opts = {}) {
   const group = util.groupSVGElements(objects, options);
 
   const fills = {
-    a: layer.fill || layer.fillA || '#FF6B4A',
-    b: layer.fill2 || layer.fillB || '#FFD166',
-    c: layer.fill3 || layer.fillC || '#FFFFFF',
+    a: layer.fill || layer.fillA || DEFAULT_GRAPHIC_FILLS.a,
+    b: layer.fill2 || layer.fillB || DEFAULT_GRAPHIC_FILLS.b,
+    c: layer.fill3 || layer.fillC || DEFAULT_GRAPHIC_FILLS.c,
   };
   tagAndTintGraphic(group, fills);
 
@@ -83,6 +89,7 @@ export async function addGraphicLayer(canvas, layer = {}, opts = {}) {
     hasBorders: true,
     lockMovementX: false,
     lockMovementY: false,
+    objectCaching: true,
     glintRole: 'graphic',
     glintGraphic: file,
     glintFills: fills,
