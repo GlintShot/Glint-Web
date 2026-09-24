@@ -53,6 +53,13 @@ export const TEMPLATE_IDS = [
   'blink-play',
   'blink-ios',
   'blink-tablet',
+  // Premium angled packs
+  'aurora-soft-play',
+  'aurora-soft-ios',
+  'aurora-soft-tablet',
+  'noir-orbit-play',
+  'noir-orbit-ios',
+  'noir-orbit-tablet',
   // Families (play phone / ios iphone / ios ipad)
   'warm-glow-play',
   'warm-glow-ios',
@@ -82,7 +89,7 @@ export const TEMPLATE_IDS = [
 /**
  * Gallery visibility. Flip to true to show a pack again.
  * JSON `"enabled": true|false` on a template overrides this map.
- * Currently: 2 Play phone + 2 iPhone + 2 iPad.
+ * Currently: Gold + Blink + Aurora Soft + Noir Orbit (play / ios / tablet).
  */
 export const TEMPLATE_ENABLED = {
   'glint-gold-play': true,
@@ -91,6 +98,12 @@ export const TEMPLATE_ENABLED = {
   'blink-ios': true,
   'glint-gold-ipad': true,
   'blink-tablet': true,
+  'aurora-soft-play': true,
+  'aurora-soft-ios': true,
+  'aurora-soft-tablet': true,
+  'noir-orbit-play': true,
+  'noir-orbit-ios': true,
+  'noir-orbit-tablet': true,
 };
 
 /** @param {string|{id?: string, enabled?: boolean}} templateOrId */
