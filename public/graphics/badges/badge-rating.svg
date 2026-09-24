@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" fill="none">
+  <rect width="200" height="56" rx="14" fill="#FF6B4A"/>
+  <path fill="#FFD166" d="M28 40l6.2-19.2L18 28.4h19.2L31.4 9.2l6.2 19.2H56.8L40.6 40l6.2 19.2z" transform="translate(8,-2) scale(.55)"/>
+  <text x="70" y="36" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#FFF7F2">4.9 · 12k</text>
+</svg>

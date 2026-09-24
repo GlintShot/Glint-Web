@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" fill="none">
+  <rect width="200" height="56" rx="28" fill="#FF6B4A"/>
+  <circle cx="32" cy="28" r="14" fill="#FFD166"/>
+  <path stroke="#FFF7F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M26 28l4 4 8-10"/>
+  <text x="56" y="36" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#FFF7F2">VERIFIED</text>
+</svg>
