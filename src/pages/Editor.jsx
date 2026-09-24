@@ -920,6 +920,13 @@ export default function Editor() {
             await replaceDeviceFrame(device, frameId, url, screenshotStyleRef.current);
           }
         }
+        // Re-bake Live 3D shells for the new frameId (same toggle, new proportions).
+        const { applyLive3DBakeToDevice } = await import('../utils/device3d/bakeDevice3D.js');
+        for (const device of canvas.getObjects().filter((o) => o.glintRole === 'framed-screenshot')) {
+          if (device.glintDeviceMode === 'live3d') {
+            await applyLive3DBakeToDevice(device);
+          }
+        }
         for (const shot of [...bare]) {
           if (!shot.glintScreenshotUrl && shotUrl) {
             shot.set({ glintScreenshotUrl: shotUrl });
