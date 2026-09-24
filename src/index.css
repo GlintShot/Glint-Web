@@ -570,11 +570,19 @@ select:disabled {
   }
 }
 
-/* Graphic tiles: SVGs are near-black (currentColor as img). Brightness alone
-   cannot lighten pure black - invert for dark UI chrome. */
-.graphic-tile img {
-  filter: grayscale(1) brightness(0.35);
+/* Mono line icons (Lucide etc.): adapt to chrome theme.
+   Colorful packs (Humaaans, stickers, badges, blobs) keep exact colors. */
+.graphic-tile--mono img {
+  filter: none;
 }
-[data-theme="dark"] .graphic-tile img {
-  filter: grayscale(1) invert(1) brightness(0.95);
+[data-theme="light"] .graphic-tile--mono img {
+  /* black strokes on light chrome */
+  filter: brightness(0);
+}
+[data-theme="dark"] .graphic-tile--mono img {
+  /* white strokes on dark chrome */
+  filter: brightness(0) invert(1);
+}
+.graphic-tile--color img {
+  filter: none;
 }
