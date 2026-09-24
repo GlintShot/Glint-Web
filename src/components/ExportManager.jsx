@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { exportAsPNG, renderScratchFrame } from '../utils/canvasEngine';
+import { exportAsPNG, exportAsPNGWithLive3D, renderScratchFrame } from '../utils/canvasEngine';
 import {
   downloadSinglePNG,
   downloadBatchZip,
@@ -22,9 +22,9 @@ export default function ExportManager({
   const [progress, setProgress] = useState('');
   const preset = EXPORT_PRESETS[exportPreset] ?? EXPORT_PRESETS['play/phone'];
 
-  const handleExportSingle = () => {
+  const handleExportSingle = async () => {
     if (!canvas) return;
-    const dataUrl = exportAsPNG(canvas);
+    const dataUrl = (await exportAsPNGWithLive3D(canvas)) || exportAsPNG(canvas);
     downloadSinglePNG(dataUrl, 'glint-frame.png');
   };
 
