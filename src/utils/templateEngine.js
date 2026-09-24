@@ -152,7 +152,16 @@ async function addFrameLayer(canvas, frameId, layer, canvasW, canvasH, editable,
   }
 }
 
-async function addDeviceLayer(canvas, screenshotUrl, layer, canvasW, canvasH, editable, originX = 0) {
+async function addDeviceLayer(
+  canvas,
+  screenshotUrl,
+  layer,
+  canvasW,
+  canvasH,
+  editable,
+  originX = 0,
+  { skipLive3d = false } = {},
+) {
   if (!layer.frame || !screenshotUrl) return null;
   const meta = getFrameMeta(layer.frame);
   const minCoverage = layer.minCoverage ?? MIN_DEVICE_COVERAGE;
@@ -186,7 +195,29 @@ async function addDeviceLayer(canvas, screenshotUrl, layer, canvasW, canvasH, ed
       glintCoverage: coverage,
       glintScreenshotUrl: screenshotUrl,
       ...(layer.angle != null ? { angle: layer.angle } : {}),
+      ...(layer.deviceMode ? { glintDeviceMode: layer.deviceMode } : {}),
     });
+    if (layer.deviceMode === 'live3d' && !skipLive3d) {
+      const { getOrbitPreset } = await import('./device3d/orbitPresets.js');
+      const preset =
+        getOrbitPreset(layer.orbitPreset || 'front-34') || getOrbitPreset('front');
+      // Flat angle ≈ yaw hint when template only sets angle
+      const yaw = layer.orbitYaw ?? (layer.angle != null ? layer.angle * 2 : preset.yaw);
+      group.glintOrbit = {
+        yaw,
+        pitch: layer.orbitPitch ?? preset.pitch,
+        roll: layer.orbitRoll ?? preset.roll,
+      };
+      try {
+        const { applyLive3DBakeToDevice } = await import('./device3d/bakeDevice3D.js');
+        await applyLive3DBakeToDevice(group);
+      } catch {
+        /* WebGL missing — keep flat angle */
+      }
+    } else if (layer.deviceMode === 'live3d' && skipLive3d && layer.angle != null) {
+      // Gallery/static preview path: keep angled flat device, no WebGL.
+      group.set({ angle: layer.angle });
+    }
   }
   return group;
 }
@@ -601,7 +632,16 @@ export function getTemplateCanvasSize(template) {
   };
 }
 
-async function paintLayers(canvas, template, screenshotUrls, metadata, themes, editable, originX = 0) {
+async function paintLayers(
+  canvas,
+  template,
+  screenshotUrls,
+  metadata,
+  themes,
+  editable,
+  originX = 0,
+  { skipLive3d = false } = {},
+) {
   const layers = template?.layers ?? [];
   const canvasW = template.canvas?.width ?? DEFAULT_WIDTH;
   const canvasH = template.canvas?.height ?? DEFAULT_HEIGHT;
@@ -645,7 +685,18 @@ async function paintLayers(canvas, template, screenshotUrls, metadata, themes, e
       }
       case 'device': {
         const url = shotUrl(layer.slot ?? 0);
-        if (url) await addDeviceLayer(canvas, url, { ...layer }, canvasW, canvasH, editable, originX);
+        if (url) {
+          await addDeviceLayer(
+            canvas,
+            url,
+            { ...layer },
+            canvasW,
+            canvasH,
+            editable,
+            originX,
+            { skipLive3d },
+          );
+        }
         break;
       }
       case 'device-frame':
@@ -840,14 +891,22 @@ export function setFrameEditable(canvas, editable) {
 /**
  * Render a single slide offscreen (for export).
  */
-export async function renderTemplateFrame(template, screenshotUrls, metadata = {}, themes = {}) {
+export async function renderTemplateFrame(
+  template,
+  screenshotUrls,
+  metadata = {},
+  themes = {},
+  { skipLive3d = false } = {},
+) {
   const canvasW = template.canvas?.width ?? DEFAULT_WIDTH;
   const canvasH = template.canvas?.height ?? DEFAULT_HEIGHT;
   const container = document.createElement('canvas');
   const canvas = createCanvas(container, canvasW, canvasH);
 
   try {
-    await paintLayers(canvas, template, screenshotUrls, metadata, themes, false, 0);
+    await paintLayers(canvas, template, screenshotUrls, metadata, themes, false, 0, {
+      skipLive3d,
+    });
     return canvas.toDataURL({ format: 'png', multiplier: 1 });
   } finally {
     canvas.dispose();
