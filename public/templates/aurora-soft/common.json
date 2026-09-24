@@ -1,0 +1,80 @@
+{
+  "familyId": "aurora-soft",
+  "name": "Aurora Soft",
+  "description": "Light lavender–mint premium set with soft blobs and gentle device lean",
+  "palette": [
+    { "id": "primary", "label": "Primary", "color": "#8B5CF6" },
+    { "id": "secondary", "label": "Secondary", "color": "#22D3EE" },
+    { "id": "accent", "label": "Accent", "color": "#F472B6" },
+    { "id": "soft", "label": "Soft", "color": "#DDD6FE" },
+    { "id": "ink", "label": "Ink", "color": "#312E81" },
+    { "id": "background", "label": "Background", "color": "#F8FAFC" }
+  ],
+  "style": {
+    "fontFamily": "Space Grotesk",
+    "fontWeight": "700",
+    "lineHeight": 1.12
+  },
+  "device": { "position": "center", "minCoverage": 0.48 },
+  "preview": {
+    "bg": "#C4B5FD",
+    "textColor": "#312E81",
+    "art": [
+      { "kind": "blob", "color": "#A5F3FC", "x": "50%", "y": "-5%", "w": "70%", "h": "40%" },
+      { "kind": "circle", "color": "#FBCFE8", "x": "-8%", "y": "70%", "w": "45%", "h": "30%" }
+    ],
+    "headlines": ["Soft launch glow", "Calm & clear", "Lean into beauty", "One gentle story", "Ready to ship"]
+  },
+  "layers": [{ "type": "background", "color": "#F8FAFC" }],
+  "slides": [
+    {
+      "name": "Hero",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#F5F3FF" },
+        { "role": "graphic1", "type": "graphic", "src": "blobs/blob-organic-1.svg", "fill": "#C4B5FD", "fill2": "#A5F3FC", "fill3": "#FBCFE8", "opacity": 0.85, "sendToBack": true },
+        { "role": "badge", "type": "graphic", "src": "badges/badge-new.svg", "fill": "#8B5CF6", "fill2": "#A78BFA", "fill3": "#FFFFFF" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Soft launch glow", "color": "#312E81", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "tagline", "type": "subheadline", "position": "top", "placeholder": "Screenshots that feel calm", "color": "#6366F1", "fontWeight": "500", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 0, "position": "center", "angle": -8, "deviceMode": "live3d" }
+      ]
+    },
+    {
+      "name": "Calm",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#ECFEFF" },
+        { "role": "graphic1", "type": "graphic", "src": "blobs/blob-frosted.svg", "fill": "#A5F3FC", "fill2": "#C4B5FD", "fill3": "#FFFFFF", "opacity": 0.7, "sendToBack": true },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Calm & clear", "color": "#0E7490", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 1, "position": "center", "angle": 6 }
+      ]
+    },
+    {
+      "name": "Lean",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#FDF2F8" },
+        { "role": "graphic1", "type": "graphic", "src": "illustrations/illust-spark-burst.svg", "fill": "#F472B6", "fill2": "#8B5CF6", "fill3": "#FFFFFF" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Lean into beauty", "color": "#9D174D", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 2, "position": "center", "angle": 10 }
+      ]
+    },
+    {
+      "name": "Story",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#EEF2FF" },
+        { "role": "graphic1", "type": "graphic", "src": "blobs/blob-hill.svg", "fill": "#A78BFA", "fill2": "#C4B5FD", "fill3": "#EEF2FF", "sendToBack": true },
+        { "role": "badge", "type": "graphic", "src": "badges/badge-rating.svg", "fill": "#FFFFFF", "fill2": "#FBBF24", "fill3": "#312E81" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "One gentle story", "color": "#3730A3", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 3, "position": "center", "angle": -6 }
+      ]
+    },
+    {
+      "name": "Ship",
+      "layers": [
+        { "role": "bg", "type": "background", "color": "#F0FDFA" },
+        { "role": "graphic1", "type": "graphic", "src": "illustrations/illust-rocket.svg", "fill": "#14B8A6", "fill2": "#8B5CF6", "fill3": "#FFFFFF" },
+        { "role": "title", "type": "headline", "position": "top", "placeholder": "Ready to ship", "color": "#115E59", "fontWeight": "700", "fontFamily": "Space Grotesk" },
+        { "role": "tagline", "type": "subheadline", "position": "top", "placeholder": "Every store size, one click", "color": "#0D9488", "fontWeight": "500", "fontFamily": "Space Grotesk" },
+        { "role": "device", "type": "device", "slot": 4, "position": "center", "angle": 0 }
+      ]
+    }
+  ]
+}

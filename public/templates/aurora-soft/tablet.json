@@ -1,0 +1,40 @@
+{
+  "id": "aurora-soft-tablet",
+  "extends": "common",
+  "description": "Aurora Soft - App Store iPad",
+  "store": "ios/ipad",
+  "canvas": { "width": 2048, "height": 2732 },
+  "device": { "frame": "ipad-pro-13", "widthFraction": 0.72 },
+  "preview": { "frame": "ipad-pro-13", "tablet": true },
+  "layout": {
+    "Hero": {
+      "graphic1": { "left": -100, "top": -120, "width": 1100 },
+      "badge": { "left": 120, "top": 140, "width": 280 },
+      "title": { "fontSize": 88, "marginTop": 240 },
+      "tagline": { "fontSize": 40, "marginTop": 400 },
+      "device": { "marginTop": 520, "angle": -8, "widthFraction": 0.72 }
+    },
+    "Calm": {
+      "graphic1": { "left": 400, "top": 400, "width": 1100 },
+      "title": { "fontSize": 76, "marginTop": 180 },
+      "device": { "marginTop": 480, "angle": 6, "widthFraction": 0.68 }
+    },
+    "Lean": {
+      "graphic1": { "left": 1600, "top": 200, "width": 280 },
+      "title": { "fontSize": 76, "marginTop": 180 },
+      "device": { "marginTop": 460, "angle": 10, "widthFraction": 0.66 }
+    },
+    "Story": {
+      "graphic1": { "left": -60, "top": 2100, "width": 2200 },
+      "badge": { "left": 100, "top": 160, "width": 340 },
+      "title": { "fontSize": 76, "marginTop": 260 },
+      "device": { "marginTop": 500, "angle": -6, "widthFraction": 0.68 }
+    },
+    "Ship": {
+      "graphic1": { "left": 1680, "top": 240, "width": 220 },
+      "title": { "fontSize": 76, "marginTop": 200 },
+      "tagline": { "fontSize": 36, "marginTop": 340 },
+      "device": { "marginTop": 500, "angle": 0, "widthFraction": 0.7 }
+    }
+  }
+}

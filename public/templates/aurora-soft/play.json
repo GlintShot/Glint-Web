@@ -1,0 +1,40 @@
+{
+  "id": "aurora-soft-play",
+  "extends": "common",
+  "description": "Aurora Soft - Play Store phone",
+  "store": "play/phone",
+  "canvas": { "width": 1080, "height": 1920 },
+  "device": { "frame": "pixel9", "widthFraction": 0.78 },
+  "preview": { "frame": "pixel9" },
+  "layout": {
+    "Hero": {
+      "graphic1": { "left": -60, "top": -80, "width": 700 },
+      "badge": { "left": 80, "top": 100, "width": 200 },
+      "title": { "fontSize": 64, "marginTop": 180 },
+      "tagline": { "fontSize": 28, "marginTop": 300 },
+      "device": { "marginTop": 420, "angle": -8, "widthFraction": 0.78 }
+    },
+    "Calm": {
+      "graphic1": { "left": 200, "top": 300, "width": 680 },
+      "title": { "fontSize": 56, "marginTop": 140 },
+      "device": { "marginTop": 380, "angle": 6, "widthFraction": 0.74 }
+    },
+    "Lean": {
+      "graphic1": { "left": 820, "top": 160, "width": 160 },
+      "title": { "fontSize": 56, "marginTop": 140 },
+      "device": { "marginTop": 360, "angle": 10, "widthFraction": 0.72 }
+    },
+    "Story": {
+      "graphic1": { "left": -40, "top": 1500, "width": 1160 },
+      "badge": { "left": 60, "top": 120, "width": 260 },
+      "title": { "fontSize": 56, "marginTop": 200 },
+      "device": { "marginTop": 400, "angle": -6, "widthFraction": 0.74 }
+    },
+    "Ship": {
+      "graphic1": { "left": 860, "top": 200, "width": 140 },
+      "title": { "fontSize": 56, "marginTop": 160 },
+      "tagline": { "fontSize": 26, "marginTop": 280 },
+      "device": { "marginTop": 400, "angle": 0, "widthFraction": 0.76 }
+    }
+  }
+}
