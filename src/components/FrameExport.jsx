@@ -49,6 +49,8 @@ export default function FrameExport({
         themes,
         editable: false,
       });
+      const { bakeLiveDevicesOnCanvas } = await import('../utils/device3d/bakeDevice3D');
+      await bakeLiveDevicesOnCanvas(canvas);
       if (format === 'svg') return canvas.toSVG();
       return canvas.toDataURL({ format: 'png', multiplier: 1 });
     } finally {
@@ -57,12 +59,14 @@ export default function FrameExport({
   };
 
   const renderFrames = async (format = 'png') => {
+    const { bakeLiveDevicesOnCanvas } = await import('../utils/device3d/bakeDevice3D');
     const results = [];
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i];
       const live = getLiveCanvases?.()?.[i];
       if (live) {
         try {
+          await bakeLiveDevicesOnCanvas(live);
           const payload = withIdentityViewport(live, () =>
             format === 'svg'
               ? live.toSVG()
