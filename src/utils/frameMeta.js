@@ -286,10 +286,10 @@ export const DEFAULT_SCREENSHOT_STYLE = {
   scale: 0.58,
   /** Drop shadow - works on framed devices and bare screenshots. */
   shadowEnabled: true,
-  shadowBlur: 36,
+  shadowBlur: 48,
   shadowOffsetX: 0,
-  shadowOffsetY: 22,
-  shadowOpacity: 0.4,
+  shadowOffsetY: 28,
+  shadowOpacity: 0.45,
   shadowColor: '#000000',
   /** Fake OS status bar: reserved top strip; shot fills the remaining hole. */
   statusBarEnabled: false,

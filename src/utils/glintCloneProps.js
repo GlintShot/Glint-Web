@@ -15,4 +15,7 @@ export const GLINT_CLONE_PROPS = [
   'glintTargetH',
   'glintLayoutW',
   'glintLayoutH',
+  'glintDeviceMode',
+  'glintOrbit',
+  'glintBakedUrl',
 ];

@@ -1267,6 +1267,14 @@ export function exportAsPNG(canvas) {
   return canvas.toDataURL({ format: 'png', multiplier: 1 });
 }
 
+/** PNG export after baking any Live 3D devices on the canvas. */
+export async function exportAsPNGWithLive3D(canvas) {
+  if (!canvas) return null;
+  const { bakeLiveDevicesOnCanvas } = await import('./device3d/bakeDevice3D.js');
+  await bakeLiveDevicesOnCanvas(canvas);
+  return exportAsPNG(canvas);
+}
+
 export function clearCanvas(canvas) {
   canvas.clear();
   canvas.backgroundColor = '#ffffff';
