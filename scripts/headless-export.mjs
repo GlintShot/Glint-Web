@@ -8,9 +8,10 @@
  *     --template blink-play \
  *     --out ./out.zip \
  *     [--app MyApp] \
+ *     [--layout flat|fastlane] [--locale en-US] \
  *     [--base http://127.0.0.1:4173]
  *
- * ZIP entries are always Frame_1.png, Frame_2.png, …
+ * ZIP entries: flat → Frame_1.png …; fastlane → deliver/supply folders for --locale.
  * Requires a running Glint Web build (`npm run build && npm run preview`)
  * and Playwright (`npx playwright install chromium`).
  */
@@ -97,6 +98,8 @@ async function main() {
   const qs = new URLSearchParams({
     template,
     app,
+    layout: arg('layout', 'flat'),
+    locale: arg('locale', 'en-US'),
   });
   const url = `${base.replace(/\/$/, '')}/export?${qs}`;
 

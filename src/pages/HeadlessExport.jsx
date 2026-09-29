@@ -22,6 +22,8 @@ export default function HeadlessExport() {
   const [params] = useSearchParams();
   const templateId = params.get('template') || 'blink-play';
   const exportName = params.get('name') || 'glint';
+  const fastlane = params.get('layout') === 'fastlane';
+  const locale = params.get('locale') || null;
   const [status, setStatus] = useState('Waiting for screenshots…');
 
   const done = (payload) => {
@@ -71,7 +73,7 @@ export default function HeadlessExport() {
           }
         }
 
-        const filenames = buildExportFilenames(dataUrls.length, { format: 'png' });
+        const filenames = buildExportFilenames(dataUrls.length, { format: 'png', fastlane, locale, store });
         const blob = await buildZipBlob(dataUrls, filenames);
         const buf = await blob.arrayBuffer();
         const bytes = new Uint8Array(buf);
@@ -121,11 +123,11 @@ export default function HeadlessExport() {
       cancelled = true;
       window.removeEventListener('message', onMessage);
     };
-  }, [templateId, exportName]);
+  }, [templateId, exportName, fastlane, locale]);
 
   const hint = useMemo(
-    () => `template=${templateId} · Frame_1.png …`,
-    [templateId],
+    () => `template=${templateId} · ${fastlane ? `fastlane/${locale || 'en-US'}` : 'Frame_1.png …'}`,
+    [templateId, fastlane, locale],
   );
 
   return (
