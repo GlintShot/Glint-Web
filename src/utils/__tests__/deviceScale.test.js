@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEVICE_SCALE_MAX,
   DEVICE_SCALE_MIN,
+  floodSilhouette,
   getDeviceDisplaySize,
   pinnedTopLeft,
   setDeviceAngle,
@@ -63,5 +64,20 @@ describe('device scale helpers', () => {
     const cy = group.top + lx * Math.sin(rad) + ly * Math.cos(rad);
     expect(cx).toBeCloseTo(beforeCx, 5);
     expect(cy).toBeCloseTo(beforeCy, 5);
+  });
+
+  it('floodSilhouette fills bezel + enclosed hole, leaves outside clear', () => {
+    // 5x5: ring of opaque bezel at x/y 1..3, hole at (2,2), outside border transparent.
+    const W = 5, H = 5;
+    const rgba = new Uint8ClampedArray(W * H * 4);
+    for (let y = 1; y <= 3; y++) for (let x = 1; x <= 3; x++) {
+      if (x !== 2 || y !== 2) rgba[(y * W + x) * 4 + 3] = 255;
+    }
+    const a = (out, x, y) => out[(y * W + x) * 4 + 3];
+    const out = floodSilhouette(rgba, W, H, 2, 2);
+    expect(a(out, 2, 2)).toBe(255);
+    expect(a(out, 1, 1)).toBe(255);
+    expect(a(out, 0, 0)).toBe(0);
+    expect(a(out, 4, 2)).toBe(0);
   });
 });
