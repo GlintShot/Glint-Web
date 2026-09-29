@@ -18,4 +18,7 @@ export const GLINT_CLONE_PROPS = [
   'glintDeviceMode',
   'glintOrbit',
   'glintBakedUrl',
+  'glintI18n',
+  'glintLocale',
+  'glintBaseFontSize',
 ];
