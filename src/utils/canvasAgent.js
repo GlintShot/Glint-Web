@@ -48,7 +48,8 @@ export function getEditorState(ctx) {
     activeIndex,
     deviceFrame,
     activeLocale: ctx.getActiveLocale?.() ?? BASE_LOCALE,
-    locales: STORE_LOCALES.map((l) => l.id),
+    locales: ctx.getProjectLocales?.() ?? [BASE_LOCALE],
+    availableLocales: STORE_LOCALES.map((l) => l.id),
     frameCount: frames.length,
     frames: frames.map((f, index) => {
       const canvas = ctx.getCanvas?.(f.id) || null;
