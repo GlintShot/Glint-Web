@@ -9,19 +9,59 @@ import { getStoreTarget } from './storeCatalog.js';
 
 export const BASE_LOCALE = 'en-US';
 
-/** Top store locales. `ios` / `play` are the folder codes fastlane deliver / supply expect. */
+/**
+ * App Store Connect + Play Console locales. `ios` / `play` are the folder codes
+ * fastlane deliver / supply expect; `native` helps search ("Deutsch", "日本語").
+ */
 export const STORE_LOCALES = [
-  { id: 'en-US', label: 'English (US)', ios: 'en-US', play: 'en-US' },
-  { id: 'es-ES', label: 'Spanish', ios: 'es-ES', play: 'es-ES' },
-  { id: 'fr-FR', label: 'French', ios: 'fr-FR', play: 'fr-FR' },
-  { id: 'de-DE', label: 'German', ios: 'de-DE', play: 'de-DE' },
-  { id: 'ja-JP', label: 'Japanese', ios: 'ja', play: 'ja-JP' },
-  { id: 'ko-KR', label: 'Korean', ios: 'ko', play: 'ko-KR' },
-  { id: 'zh-Hans', label: 'Chinese (Simplified)', ios: 'zh-Hans', play: 'zh-CN' },
-  { id: 'pt-BR', label: 'Portuguese (Brazil)', ios: 'pt-BR', play: 'pt-BR' },
-  { id: 'ar', label: 'Arabic', ios: 'ar-SA', play: 'ar', rtl: true },
-  { id: 'hi-IN', label: 'Hindi', ios: 'hi', play: 'hi-IN' },
+  { id: 'en-US', label: 'English (US)', native: 'English', ios: 'en-US', play: 'en-US' },
+  { id: 'en-GB', label: 'English (UK)', native: 'English', ios: 'en-GB', play: 'en-GB' },
+  { id: 'en-AU', label: 'English (Australia)', native: 'English', ios: 'en-AU', play: 'en-AU' },
+  { id: 'en-CA', label: 'English (Canada)', native: 'English', ios: 'en-CA', play: 'en-CA' },
+  { id: 'es-ES', label: 'Spanish (Spain)', native: 'Español', ios: 'es-ES', play: 'es-ES' },
+  { id: 'es-MX', label: 'Spanish (Latin America)', native: 'Español', ios: 'es-MX', play: 'es-419' },
+  { id: 'fr-FR', label: 'French', native: 'Français', ios: 'fr-FR', play: 'fr-FR' },
+  { id: 'fr-CA', label: 'French (Canada)', native: 'Français', ios: 'fr-CA', play: 'fr-CA' },
+  { id: 'de-DE', label: 'German', native: 'Deutsch', ios: 'de-DE', play: 'de-DE' },
+  { id: 'it', label: 'Italian', native: 'Italiano', ios: 'it', play: 'it-IT' },
+  { id: 'pt-BR', label: 'Portuguese (Brazil)', native: 'Português', ios: 'pt-BR', play: 'pt-BR' },
+  { id: 'pt-PT', label: 'Portuguese (Portugal)', native: 'Português', ios: 'pt-PT', play: 'pt-PT' },
+  { id: 'nl-NL', label: 'Dutch', native: 'Nederlands', ios: 'nl-NL', play: 'nl-NL' },
+  { id: 'ja-JP', label: 'Japanese', native: '日本語', ios: 'ja', play: 'ja-JP' },
+  { id: 'ko-KR', label: 'Korean', native: '한국어', ios: 'ko', play: 'ko-KR' },
+  { id: 'zh-Hans', label: 'Chinese (Simplified)', native: '简体中文', ios: 'zh-Hans', play: 'zh-CN' },
+  { id: 'zh-Hant', label: 'Chinese (Traditional)', native: '繁體中文', ios: 'zh-Hant', play: 'zh-TW' },
+  { id: 'ar', label: 'Arabic', native: 'العربية', ios: 'ar-SA', play: 'ar', rtl: true },
+  { id: 'he', label: 'Hebrew', native: 'עברית', ios: 'he', play: 'iw-IL', rtl: true },
+  { id: 'hi-IN', label: 'Hindi', native: 'हिन्दी', ios: 'hi', play: 'hi-IN' },
+  { id: 'id', label: 'Indonesian', native: 'Bahasa Indonesia', ios: 'id', play: 'id' },
+  { id: 'ms', label: 'Malay', native: 'Bahasa Melayu', ios: 'ms', play: 'ms' },
+  { id: 'th', label: 'Thai', native: 'ไทย', ios: 'th', play: 'th' },
+  { id: 'vi', label: 'Vietnamese', native: 'Tiếng Việt', ios: 'vi', play: 'vi' },
+  { id: 'tr', label: 'Turkish', native: 'Türkçe', ios: 'tr', play: 'tr-TR' },
+  { id: 'ru', label: 'Russian', native: 'Русский', ios: 'ru', play: 'ru-RU' },
+  { id: 'uk', label: 'Ukrainian', native: 'Українська', ios: 'uk', play: 'uk' },
+  { id: 'pl', label: 'Polish', native: 'Polski', ios: 'pl', play: 'pl-PL' },
+  { id: 'cs', label: 'Czech', native: 'Čeština', ios: 'cs', play: 'cs-CZ' },
+  { id: 'sk', label: 'Slovak', native: 'Slovenčina', ios: 'sk', play: 'sk' },
+  { id: 'hu', label: 'Hungarian', native: 'Magyar', ios: 'hu', play: 'hu-HU' },
+  { id: 'ro', label: 'Romanian', native: 'Română', ios: 'ro', play: 'ro' },
+  { id: 'hr', label: 'Croatian', native: 'Hrvatski', ios: 'hr', play: 'hr' },
+  { id: 'el', label: 'Greek', native: 'Ελληνικά', ios: 'el', play: 'el-GR' },
+  { id: 'sv', label: 'Swedish', native: 'Svenska', ios: 'sv', play: 'sv-SE' },
+  { id: 'da', label: 'Danish', native: 'Dansk', ios: 'da', play: 'da-DK' },
+  { id: 'no', label: 'Norwegian', native: 'Norsk', ios: 'no', play: 'no-NO' },
+  { id: 'fi', label: 'Finnish', native: 'Suomi', ios: 'fi', play: 'fi-FI' },
+  { id: 'ca', label: 'Catalan', native: 'Català', ios: 'ca', play: 'ca' },
 ];
+
+/** Match a sheet header / user code ("de", "ja", "zh-CN", "iw-IL") to a catalog id. */
+export function resolveLocaleId(code) {
+  const c = String(code || '').trim().toLowerCase();
+  if (!c) return null;
+  const hit = STORE_LOCALES.find((l) => [l.id, l.ios, l.play].some((x) => x.toLowerCase() === c));
+  return hit?.id || STORE_LOCALES.find((l) => l.id.toLowerCase().split('-')[0] === c)?.id || null;
+}
 
 export function getLocale(id) {
   return STORE_LOCALES.find((l) => l.id === id) || null;
@@ -31,17 +71,22 @@ export function isRtl(id) {
   return !!getLocale(id)?.rtl || /^(ar|he|fa|ur)(-|$)/.test(String(id || ''));
 }
 
-function textObjects(canvas) {
+/** Text layers of one canvas (one sheet row each). */
+export function textObjects(canvas) {
   return (canvas?.getObjects?.() || []).filter((o) => o.glintRole === 'text');
+}
+
+/** Untranslated locale showing the untouched base text — not a translation. */
+function showingFallback(obj) {
+  const cur = obj.glintLocale || BASE_LOCALE;
+  const map = obj.glintI18n || {};
+  return cur !== BASE_LOCALE && !map[cur] && obj.text === map[BASE_LOCALE];
 }
 
 /** Save the visible text under the locale it was shown in. */
 function snapshot(obj) {
   const cur = obj.glintLocale || BASE_LOCALE;
-  const map = obj.glintI18n || {};
-  // Untouched base-text fallback is not a translation.
-  const isFallback = cur !== BASE_LOCALE && !(cur in map) && obj.text === map[BASE_LOCALE];
-  if (!isFallback) obj.glintI18n = { ...map, [cur]: obj.text ?? '' };
+  if (!showingFallback(obj)) obj.glintI18n = { ...(obj.glintI18n || {}), [cur]: obj.text ?? '' };
   // Base locale font size is authoritative; other locales may be auto-shrunk.
   if (cur === BASE_LOCALE || obj.glintBaseFontSize == null) obj.glintBaseFontSize = obj.fontSize;
 }
@@ -59,7 +104,7 @@ export function fitTextWidth(obj, maxW) {
 function showLocale(obj, locale, maxW) {
   const map = obj.glintI18n || {};
   obj.set({
-    text: map[locale] ?? map[BASE_LOCALE] ?? obj.text ?? '',
+    text: (locale === BASE_LOCALE ? map[BASE_LOCALE] : map[locale] || map[BASE_LOCALE]) ?? obj.text ?? '',
     fontSize: obj.glintBaseFontSize ?? obj.fontSize,
     direction: isRtl(locale) ? 'rtl' : 'ltr',
   });
@@ -99,11 +144,60 @@ export function localesOnCanvases(canvases = []) {
   const set = new Set([BASE_LOCALE]);
   for (const c of canvases) {
     for (const obj of textObjects(c)) {
-      Object.keys(obj.glintI18n || {}).forEach((k) => set.add(k));
+      Object.entries(obj.glintI18n || {}).forEach(([k, v]) => v && set.add(k));
       if (obj.glintLocale) set.add(obj.glintLocale);
     }
   }
   return [...set];
+}
+
+/** Drop every translation for `locale` (the base locale is never removed). */
+export function removeLocaleFromCanvases(canvases, locale) {
+  if (locale === BASE_LOCALE) return;
+  for (const c of canvases) {
+    for (const obj of textObjects(c)) {
+      if (obj.glintI18n) delete obj.glintI18n[locale];
+    }
+  }
+}
+
+/** Current caption for a layer in `locale`, including unsaved on-canvas edits. */
+export function captionFor(obj, locale) {
+  if ((obj.glintLocale || BASE_LOCALE) === locale) return showingFallback(obj) ? '' : obj.text ?? '';
+  return obj.glintI18n?.[locale] ?? '';
+}
+
+const csvCell = (v) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+
+/** rows: string[][] → CSV text (Excel / Google Sheets friendly, with BOM for UTF-8). */
+export function toCsv(rows) {
+  return `\uFEFF${rows.map((r) => r.map((v) => csvCell(String(v ?? ''))).join(',')).join('\r\n')}`;
+}
+
+/** CSV / TSV / semicolon sheet → string[][] (quoted cells, embedded newlines). */
+export function parseSheet(text) {
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  const head = src.split(/\r?\n/, 1)[0];
+  const delim = ['\t', ';', ','].reduce((a, d) => (head.split(d).length > head.split(a).length ? d : a), ',');
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"' && cell === '') quoted = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && src[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
 
 /**

@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyLocaleToCanvas,
+  captionFor,
   fastlaneScreenshotPath,
   localesOnCanvases,
+  parseSheet,
+  resolveLocaleId,
   setLocaleText,
+  toCsv,
 } from '../locales.js';
 
 function fakeText(text) {
@@ -44,10 +48,25 @@ describe('locales', () => {
     applyLocaleToCanvas(c, 'ar');
     expect(t.text).toBe('Track habits daily');
     expect(t.direction).toBe('rtl');
+    expect(captionFor(t, 'ar')).toBe('');
 
     applyLocaleToCanvas(c, 'en-US');
     expect(t.fontSize).toBe(80);
     expect(t.glintI18n.ar).toBeUndefined();
     expect(localesOnCanvases([c])).toEqual(['en-US', 'de-DE']);
+
+    setLocaleText(c, t, 'fr-FR', '');
+    applyLocaleToCanvas(c, 'fr-FR');
+    expect(t.text).toBe('Track habits daily');
+  });
+
+  it('round-trips sheets and matches store codes', () => {
+    const rows = [['frame', 'layer', 'en-US', 'de-DE'], ['1', '1', 'Hi, "you"\nthere', 'Hallo']];
+    expect(parseSheet(toCsv(rows))).toEqual(rows);
+    expect(parseSheet('frame\tlayer\tja\n1\t1\tこんにちは')).toEqual([['frame', 'layer', 'ja'], ['1', '1', 'こんにちは']]);
+    expect(resolveLocaleId('ja')).toBe('ja-JP');
+    expect(resolveLocaleId('zh-CN')).toBe('zh-Hans');
+    expect(resolveLocaleId('iw-IL')).toBe('he');
+    expect(resolveLocaleId('frame')).toBe(null);
   });
 });
