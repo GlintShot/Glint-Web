@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sun, Moon, PanelLeftClose, PanelLeft, PanelRightClose, PanelRight,
   ZoomIn, ZoomOut, Type, Trash2, Download, Upload, Undo2, Redo2,
-  RotateCcw,
+  RotateCcw, Languages,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import FrameBoard from '../components/FrameBoard';
@@ -39,7 +39,14 @@ import {
 import { DEFAULT_SCREENSHOT_STYLE, resolveFrameForStore } from '../utils/frameMeta';
 import { EXPORT_PRESETS, resolveStoreKey } from '../utils/exportHelper';
 import { getStoreTarget } from '../utils/storeCatalog';
-import { BASE_LOCALE, STORE_LOCALES, getLocale, applyLocaleToCanvas } from '../utils/locales';
+import {
+  BASE_LOCALE,
+  getLocale,
+  applyLocaleToCanvas,
+  localesOnCanvases,
+  removeLocaleFromCanvases,
+} from '../utils/locales';
+import TranslationsModal from '../components/TranslationsModal';
 import { getWhiteScreenshot } from '../utils/placeholderScreenshots';
 import {
   computeBoardZoomBounds,
@@ -196,6 +203,27 @@ export default function Editor() {
     markDirty();
     return { ok: true, locale, changed };
   }, [markDirty]);
+  // Languages added in the sheet before any caption is translated (translated ones live on the canvases).
+  const [extraLocales, setExtraLocales] = useState([]);
+  const [translationsOpen, setTranslationsOpen] = useState(false);
+  const [, setI18nTick] = useState(0);
+  const liveCanvases = () => framesRef.current.map((f) => canvasMapRef.current[f.id]).filter(Boolean);
+  const projectLocales = [...new Set([...localesOnCanvases(liveCanvases()), ...extraLocales])];
+  const projectLocalesRef = useRef(projectLocales);
+  projectLocalesRef.current = projectLocales;
+  const addLocales = useCallback((ids) => {
+    setExtraLocales((prev) => [...new Set([...prev, ...ids.filter((id) => getLocale(id))])]);
+  }, []);
+  const removeLocale = useCallback((id) => {
+    removeLocaleFromCanvases(liveCanvases(), id);
+    setExtraLocales((prev) => prev.filter((l) => l !== id));
+    if (activeLocaleRef.current === id) switchLocale(BASE_LOCALE);
+    else markDirty();
+  }, [switchLocale, markDirty]);
+  const onTranslationsEdited = useCallback(() => {
+    markDirty();
+    setI18nTick((t) => t + 1);
+  }, [markDirty]);
   const historyRef = useRef(createEditorHistory());
   const restoringRef = useRef(false);
   const pushHistoryRef = useRef(() => {});
@@ -315,6 +343,7 @@ export default function Editor() {
     setActiveIndex,
     getDeviceFrame: () => deviceFrameRef.current,
     getActiveLocale: () => activeLocaleRef.current,
+    getProjectLocales: () => projectLocalesRef.current,
     setActiveLocale: switchLocale,
     getWhiteScreenshot,
     updateFrame,
@@ -1580,17 +1609,31 @@ export default function Editor() {
           >
             {bridge.connected ? 'Connected' : bridge.pairing ? 'Pairing...' : 'Offline'}
           </span>
-          <select
-            value={activeLocale}
-            onChange={(e) => switchLocale(e.target.value)}
-            aria-label="Caption language"
-            title="Caption language (edit text per language; Copilot can translate)"
-            className="px-1.5 py-1 border border-glint-border rounded-md text-[11px] bg-glint-bg text-glint-text"
+          <button
+            type="button"
+            onClick={() => setTranslationsOpen(true)}
+            title="Translations: add languages, edit or import captions, translate with AI"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-glint-border-strong text-glint-text hover:bg-glint-surface-2"
           >
-            {STORE_LOCALES.map((l) => (
-              <option key={l.id} value={l.id}>{l.id} · {l.label}</option>
-            ))}
-          </select>
+            <Languages size={14} />
+            Languages
+            {projectLocales.length > 1 && (
+              <span className="px-1.5 rounded-full bg-glint-accent/15 text-glint-accent text-[10px]">{projectLocales.length}</span>
+            )}
+          </button>
+          {projectLocales.length > 1 && (
+            <select
+              value={activeLocale}
+              onChange={(e) => switchLocale(e.target.value)}
+              aria-label="Preview language"
+              title="Preview frames in this language"
+              className="px-1.5 py-1 border border-glint-border rounded-md text-[11px] bg-glint-bg text-glint-text"
+            >
+              {projectLocales.map((id) => (
+                <option key={id} value={id}>{getLocale(id)?.label || id}</option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             onClick={openExportSidebar}
@@ -1817,6 +1860,7 @@ export default function Editor() {
                   exportPreset={exportPreset}
                   setExportPreset={setExportPreset}
                   activeLocale={activeLocale}
+                  locales={projectLocales}
                   themes={themes}
                   canvasWidth={canvasW}
                   canvasHeight={canvasH}
@@ -1891,6 +1935,20 @@ export default function Editor() {
           onClose={closeDeviceMenu}
         />
       )}
+      <TranslationsModal
+        open={translationsOpen}
+        onClose={() => setTranslationsOpen(false)}
+        frames={frames}
+        getCanvas={getCanvasForFrame}
+        locales={projectLocales}
+        activeLocale={activeLocale}
+        onAddLocales={addLocales}
+        onRemoveLocale={removeLocale}
+        onPreview={switchLocale}
+        onEdited={onTranslationsEdited}
+        copilot={copilot}
+        refreshKey={copilot.status}
+      />
       <CopyToFrameModal
         open={copyToFrameOpen}
         frames={frames}
