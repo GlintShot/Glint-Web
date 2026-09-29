@@ -59,7 +59,7 @@ function GraphicTile({ item, onInsert }) {
       title={tip}
       onClick={() => onInsert?.(item.src)}
       className={`graphic-tile group relative w-full aspect-square rounded-lg border border-glint-border overflow-hidden hover:border-glint-accent hover:ring-1 hover:ring-glint-accent/30 transition-all ${
-        isMono ? 'graphic-tile--mono bg-white' : 'graphic-tile--color bg-glint-surface-2'
+        isMono ? 'graphic-tile--mono bg-glint-surface-2' : 'graphic-tile--color bg-glint-surface-2'
       }`}
     >
       <img
