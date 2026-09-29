@@ -12,9 +12,7 @@ const TEMPLATE_CACHE = {};
 export async function loadThemePresets() {
   if (Object.keys(THEME_CACHE).length > 0) return THEME_CACHE;
   try {
-    const res = await fetch('/templates/config.json');
-    if (!res.ok) return THEME_CACHE;
-    const config = await res.json();
+    const config = await fetchJsonOnce('/templates/config.json', 'Template config');
     if (config.themes) Object.assign(THEME_CACHE, config.themes);
   } catch {
     // Return empty cache on network error
@@ -131,30 +129,39 @@ export function filterVisibleTemplates(templates, filter) {
   );
 }
 
-export async function loadTemplate(templateId) {
-  if (TEMPLATE_CACHE[templateId]) return TEMPLATE_CACHE[templateId];
+const JSON_CACHE = {};
 
-  const res = await fetch(templateJsonUrl(templateId));
-  if (!res.ok) throw new Error(`Template not found: ${templateId}`);
-  const platform = await res.json();
+/** Fetch JSON once per URL; concurrent callers share the in-flight request (a family's common.json is used by 3 packs). */
+function fetchJsonOnce(url, what) {
+  JSON_CACHE[url] ??= fetch(url).then((res) => {
+    if (!res.ok) throw new Error(`${what} not found: ${url}`);
+    return res.json();
+  });
+  JSON_CACHE[url].catch(() => delete JSON_CACHE[url]);
+  return JSON_CACHE[url];
+}
 
-  let template = platform;
-  const commonUrl = templateCommonUrl(templateId);
-  if (commonUrl && (platform.extends || TEMPLATE_FAMILY_PATHS[templateId])) {
-    const commonRes = await fetch(commonUrl);
-    if (!commonRes.ok) throw new Error(`Template common not found: ${commonUrl}`);
-    const common = await commonRes.json();
-    template = mergeTemplateFamily(common, platform);
-  }
-
-  // Drop merge bookkeeping so canvas engine only sees slide layers.
-  delete template.extends;
-  delete template.layout;
-  delete template.style;
-  delete template.device;
-
-  TEMPLATE_CACHE[templateId] = template;
-  return template;
+export function loadTemplate(templateId) {
+  TEMPLATE_CACHE[templateId] ??= (async () => {
+    const commonUrl = templateCommonUrl(templateId);
+    const wantsCommon = commonUrl && TEMPLATE_FAMILY_PATHS[templateId];
+    const [platform, common] = await Promise.all([
+      fetchJsonOnce(templateJsonUrl(templateId), 'Template'),
+      wantsCommon ? fetchJsonOnce(commonUrl, 'Template common') : null,
+    ]);
+    const base = commonUrl && (common || platform.extends)
+      ? mergeTemplateFamily(common ?? await fetchJsonOnce(commonUrl, 'Template common'), platform)
+      : platform;
+    const template = structuredClone(base);
+    // Drop merge bookkeeping so canvas engine only sees slide layers.
+    delete template.extends;
+    delete template.layout;
+    delete template.style;
+    delete template.device;
+    return template;
+  })();
+  TEMPLATE_CACHE[templateId].catch(() => delete TEMPLATE_CACHE[templateId]);
+  return TEMPLATE_CACHE[templateId];
 }
 
 /**
