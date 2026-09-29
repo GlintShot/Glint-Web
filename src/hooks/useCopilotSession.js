@@ -4,25 +4,7 @@ import { createCopilotSession, installCopilotBridge } from '../utils/copilotSess
 /**
  * Bind a Copilot session to the live Editor canvas map.
  */
-export function useCopilotSession({
-  getFrames,
-  getCanvas,
-  getActiveIndex,
-  setActiveIndex,
-  getDeviceFrame,
-  getWhiteScreenshot,
-  updateFrame,
-  remapPaletteColors,
-  setBackgroundState,
-  setDeviceBezel,
-  setDeviceBezelOnFrame,
-  patchScreenshotStyle,
-  patchScreenshotStyleOnFrame,
-  extractTheme,
-  startBlank,
-  onDirty,
-  getMeta,
-}) {
+export function useCopilotSession({ onDirty, getMeta, ...ctx }) {
   const [ui, setUi] = useState(() => ({
     enabled: false,
     paused: true,
@@ -33,23 +15,7 @@ export function useCopilotSession({
   }));
 
   const ctxRef = useRef({});
-  ctxRef.current = {
-    getFrames,
-    getCanvas,
-    getActiveIndex,
-    setActiveIndex,
-    getDeviceFrame,
-    getWhiteScreenshot,
-    updateFrame,
-    remapPaletteColors,
-    setBackgroundState,
-    setDeviceBezel,
-    setDeviceBezelOnFrame,
-    patchScreenshotStyle,
-    patchScreenshotStyleOnFrame,
-    extractTheme,
-    startBlank,
-  };
+  ctxRef.current = ctx;
 
   const metaRef = useRef(getMeta);
   metaRef.current = getMeta;
