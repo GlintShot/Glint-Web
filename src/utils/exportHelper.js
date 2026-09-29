@@ -5,6 +5,7 @@ import {
   getStoreTarget,
   storeExportLabel,
 } from './storeCatalog';
+import { BASE_LOCALE, fastlaneScreenshotPath } from './locales.js';
 
 export { resolveStoreKey, storeExportLabel, getStoreTarget } from './storeCatalog';
 
@@ -31,13 +32,15 @@ export function zipFileName(appName, format) {
 
 /**
  * Build ZIP entry names: Frame_1.png, Frame_2.svg, …
+ * With `locale`: de-DE/Frame_1.png. With `fastlane: true`: fastlane deliver/supply paths (PNG only).
  * @param {'png'|'svg'} format
  */
-export function buildExportFilenames(count, { format = 'png' } = {}) {
+export function buildExportFilenames(count, { format = 'png', locale = null, fastlane = false, store = 'play/phone' } = {}) {
   const ext = format === 'svg' ? 'svg' : 'png';
   const files = [];
   for (let i = 0; i < count; i++) {
-    files.push(`Frame_${i + 1}.${ext}`);
+    if (fastlane) files.push(fastlaneScreenshotPath(store, locale || BASE_LOCALE, i));
+    else files.push(`${locale ? `${locale}/` : ''}Frame_${i + 1}.${ext}`);
   }
   return files;
 }
