@@ -4,14 +4,19 @@ import { createCanvas } from '../utils/canvasEngine';
 import {
   downloadBatchZip,
   EXPORT_PRESETS,
-  zipFileName,
   buildExportFilenames,
   verifyExport,
 } from '../utils/exportHelper';
+import {
+  BASE_LOCALE,
+  applyLocaleToCanvas,
+  getLocale,
+  localesOnCanvases,
+} from '../utils/locales';
 
 /**
- * Preview frames, then export as PNG or SVG - each export downloads a ZIP of every frame
- * as Frame_1.png / Frame_2.svg / …
+ * Preview frames, then export as PNG / SVG / Fastlane ZIP.
+ * One locale → Frame_1.png …; several → de-DE/Frame_1.png …; Fastlane → deliver/supply folders.
  */
 export default function FrameExport({
   frames,
@@ -20,13 +25,26 @@ export default function FrameExport({
   themes = {},
   canvasWidth = 1080,
   canvasHeight = 1920,
+  activeLocale = BASE_LOCALE,
   onPreviewsReady,
 }) {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState('');
   const [previews, setPreviews] = useState([]);
+  const [excluded, setExcluded] = useState(() => new Set());
 
   const preset = EXPORT_PRESETS[exportPreset] ?? EXPORT_PRESETS['play/phone'];
+  const available = localesOnCanvases(getLiveCanvases?.() || []);
+  const exportLocales = available.filter((l) => !excluded.has(l));
+
+  const toggleLocale = (id) => {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const withIdentityViewport = (canvas, fn) => {
     const vpt = canvas.viewportTransform?.slice?.() || [1, 0, 0, 1, 0, 0];
@@ -39,6 +57,7 @@ export default function FrameExport({
     }
   };
 
+  // ponytail: offscreen fallback renders the template design, so it only has base-locale captions.
   const renderOffscreen = async (frame, format) => {
     const el = document.createElement('canvas');
     const canvas = createCanvas(el, canvasWidth, canvasHeight);
@@ -83,6 +102,34 @@ export default function FrameExport({
     return results;
   };
 
+  /** Render every selected locale; always restores the editor's active locale. */
+  const renderLocales = async (format, { fastlane = false } = {}) => {
+    const locales = exportLocales.length ? exportLocales : [activeLocale];
+    const tagFolders = fastlane || locales.length > 1;
+    const live = getLiveCanvases?.() || [];
+    const payloads = [];
+    const names = [];
+    let firstSet = [];
+    try {
+      for (const loc of locales) {
+        setProgress(`Rendering ${loc}…`);
+        if (loc !== activeLocale || locales.length > 1) live.forEach((c) => applyLocaleToCanvas(c, loc));
+        const results = await renderFrames(format);
+        if (!firstSet.length) firstSet = results;
+        payloads.push(...results);
+        names.push(...buildExportFilenames(results.length, {
+          format,
+          locale: tagFolders ? loc : null,
+          fastlane,
+          store: exportPreset,
+        }));
+      }
+    } finally {
+      if (locales.some((l) => l !== activeLocale)) live.forEach((c) => applyLocaleToCanvas(c, activeLocale));
+    }
+    return { payloads, names, firstSet, locales };
+  };
+
   const publishPreviews = (results) => {
     setPreviews(results);
     onPreviewsReady?.(results);
@@ -103,30 +150,28 @@ export default function FrameExport({
     }
   };
 
-  const handleExport = async (format) => {
+  const handleExport = async (format, { fastlane = false } = {}) => {
     if (!frames.length) return;
     setProcessing(true);
     try {
-      setProgress(`Rendering ${format.toUpperCase()}...`);
-      const results = await renderFrames(format);
+      const { payloads, names, firstSet, locales } = await renderLocales(format, { fastlane });
 
-      // Verify against store specs before downloading
       if (format === 'png') {
-        const verification = verifyExport(results, exportPreset);
-        publishPreviews(results);
+        const verification = verifyExport(firstSet, exportPreset);
+        publishPreviews(firstSet);
         if (!verification.ok) {
           setProgress(`Export blocked: ${verification.errors.join('; ')}`);
           return;
         }
         if (verification.warnings.length) {
-          setProgress(`Warning: ${verification.warnings[0]} · Exporting ${results.length} frame(s)`);
+          setProgress(`Warning: ${verification.warnings[0]}`);
         }
       }
 
-      const filenames = buildExportFilenames(results.length, { format });
-      await downloadBatchZip(results, filenames, `Glint-ss.zip`);
+      const zipName = fastlane ? 'Glint-fastlane.zip' : 'Glint-ss.zip';
+      await downloadBatchZip(payloads, names, zipName);
       setProgress(
-        `Exported ${results.length} ${format.toUpperCase()} file(s) as ZIP (${preset.label})`,
+        `Exported ${payloads.length} file(s) · ${locales.length} locale(s) · ${fastlane ? 'Fastlane layout' : preset.label}`,
       );
     } catch (err) {
       setProgress(`Error: ${err.message}`);
@@ -143,6 +188,30 @@ export default function FrameExport({
       <p className="text-[11px] text-glint-text-secondary">
         {frames.length} frame(s) · {preset.label}
       </p>
+
+      {available.length > 1 && (
+        <fieldset className="space-y-1">
+          <legend className="text-[10px] text-glint-text-tertiary mb-1">Locales to export</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {available.map((id) => (
+              <label
+                key={id}
+                className="flex items-center gap-1 text-[11px] text-glint-text-secondary cursor-pointer"
+                title={getLocale(id)?.label || id}
+              >
+                <input
+                  type="checkbox"
+                  checked={!excluded.has(id)}
+                  onChange={() => toggleLocale(id)}
+                  className="accent-glint-accent"
+                />
+                {id}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
       <button
         type="button"
         onClick={handlePreview}
@@ -169,6 +238,15 @@ export default function FrameExport({
           SVG
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => handleExport('png', { fastlane: true })}
+        disabled={!frames.length || processing}
+        title="ZIP laid out for fastlane deliver (iOS) / supply (Play)"
+        className="w-full px-3 py-2 border border-glint-border-strong bg-glint-surface text-glint-text rounded-xl hover:bg-glint-surface-2 disabled:opacity-50 text-xs font-semibold"
+      >
+        Fastlane ZIP
+      </button>
       {progress && <p className="text-xs text-glint-text-secondary">{progress}</p>}
       {previews.length > 0 && (
         <div className="grid grid-cols-5 gap-1">
