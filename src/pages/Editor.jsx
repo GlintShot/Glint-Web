@@ -1612,7 +1612,7 @@ export default function Editor() {
           <button
             type="button"
             onClick={() => setTranslationsOpen(true)}
-            title="Translations: add languages, edit or import captions, translate with AI"
+            title="Translations: add languages, edit or import captions"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-glint-border-strong text-glint-text hover:bg-glint-surface-2"
           >
             <Languages size={14} />

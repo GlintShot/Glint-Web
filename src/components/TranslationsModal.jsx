@@ -185,13 +185,7 @@ export default function TranslationsModal({
       setNotice('Add at least one language first, then ask AI to translate.');
       return;
     }
-    if (!copilot?.enabled) copilot?.enable?.();
-    else if (copilot.paused) copilot.resume?.();
-    const code = copilot?.session?.pairCode;
-    if (!code) {
-      setNotice('Could not start the agent session. Turn on "Allow agent" in the Copilot bar, then try again.');
-      return;
-    }
+    const code = copilot.pairCode;
     try {
       await navigator.clipboard.writeText(aiPrompt(code, targets));
       setNotice(`Prompt copied for board ${code}. Paste it into your AI agent (Cursor, Claude…) with Glint MCP; captions fill in here live.`);
@@ -338,14 +332,16 @@ export default function TranslationsModal({
           >
             <Download size={14} /> Download sheet
           </button>
-          <button
-            type="button"
-            onClick={askAi}
-            title="Copy a prompt for your AI agent (Glint MCP) to translate every caption"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-glint-accent/50 text-glint-accent hover:bg-glint-accent/10"
-          >
-            <Sparkles size={14} /> Translate with AI
-          </button>
+          {copilot?.enabled && !copilot.paused && copilot.pairCode && (
+            <button
+              type="button"
+              onClick={askAi}
+              title="Copy a prompt for your connected IDE agent (Glint MCP) to translate every caption"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-glint-accent/50 text-glint-accent hover:bg-glint-accent/10"
+            >
+              <Sparkles size={14} /> Translate with AI
+            </button>
+          )}
           <button type="button" onClick={onClose} aria-label="Close translations" className="p-1.5 rounded-md text-glint-text-secondary hover:bg-glint-surface-2">
             <X size={16} />
           </button>
