@@ -44,10 +44,6 @@ export default function TemplateGallery({ onChange, activeStore, onStartBlank })
     requestAnimationFrame(() => document.activeElement?.blur?.());
   };
 
-  if (loading) {
-    return <p className="text-sm text-glint-text-tertiary">Loading templates…</p>;
-  }
-
   return (
     <div className="space-y-2">
       <DeviceBrowseFilters
@@ -72,7 +68,13 @@ export default function TemplateGallery({ onChange, activeStore, onStartBlank })
           </span>
         </button>
       )}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="space-y-2" role="status" aria-label="Loading templates">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="glint-shimmer h-[112px] rounded-xl border border-glint-border bg-glint-surface-2" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-xs text-glint-text-tertiary py-4 text-center">
           No templates for this size yet.
         </p>

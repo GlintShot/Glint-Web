@@ -282,13 +282,7 @@ export default function FrameCanvas({
     >
       {/* No pointer-events-none here - Fabric clones this class onto the upper canvas. */}
       <canvas ref={elRef} className={`block ${loaded ? 'opacity-100' : 'opacity-0'}`} />
-      {!loaded && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-transparent" />
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-black/[0.06] to-transparent dark:via-white/[0.08]" />
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_ease-in-out_0.4s_infinite] bg-gradient-to-r from-transparent via-black/[0.04] to-transparent dark:via-white/[0.05]" />
-        </div>
-      )}
+      {!loaded && <div className="glint-shimmer absolute inset-0 pointer-events-none" aria-hidden="true" />}
     </div>
   );
 }

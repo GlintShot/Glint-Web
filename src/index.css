@@ -418,10 +418,29 @@ select:disabled {
   }
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(100%); }
-  100% { transform: translateX(100%); }
+/* Loading skeleton: one compositor-only sweep (transform), smooth even while the main thread paints. */
+.glint-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.glint-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(0 0 0 / 0.06), transparent);
+  animation: glint-shimmer 1.4s linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+[data-theme="dark"] .glint-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+}
+@keyframes glint-shimmer {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glint-shimmer::after { animation: none; }
 }
 
 /* Copilot telepresence - soft pulse on the frame the agent is editing. */
