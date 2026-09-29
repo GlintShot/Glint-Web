@@ -39,6 +39,7 @@ import {
 import { DEFAULT_SCREENSHOT_STYLE, resolveFrameForStore } from '../utils/frameMeta';
 import { EXPORT_PRESETS, resolveStoreKey } from '../utils/exportHelper';
 import { getStoreTarget } from '../utils/storeCatalog';
+import { BASE_LOCALE, STORE_LOCALES, getLocale, applyLocaleToCanvas } from '../utils/locales';
 import { getWhiteScreenshot } from '../utils/placeholderScreenshots';
 import {
   computeBoardZoomBounds,
@@ -180,6 +181,21 @@ export default function Editor() {
   screenshotStyleRef.current = screenshotStyle;
   const fontFamilyRef = useRef(fontFamily);
   fontFamilyRef.current = fontFamily;
+  const [activeLocale, setActiveLocaleState] = useState(BASE_LOCALE);
+  const activeLocaleRef = useRef(activeLocale);
+  activeLocaleRef.current = activeLocale;
+  /** Swap every frame's captions to `locale` (missing translations keep the current text). */
+  const switchLocale = useCallback((locale) => {
+    if (!getLocale(locale)) return { ok: false, error: 'unknown_locale' };
+    let changed = 0;
+    for (const f of framesRef.current) {
+      const c = canvasMapRef.current[f.id];
+      if (c) changed += applyLocaleToCanvas(c, locale);
+    }
+    setActiveLocaleState(locale);
+    markDirty();
+    return { ok: true, locale, changed };
+  }, [markDirty]);
   const historyRef = useRef(createEditorHistory());
   const restoringRef = useRef(false);
   const pushHistoryRef = useRef(() => {});
@@ -298,6 +314,8 @@ export default function Editor() {
     getActiveIndex: () => activeIndexRef.current,
     setActiveIndex,
     getDeviceFrame: () => deviceFrameRef.current,
+    getActiveLocale: () => activeLocaleRef.current,
+    setActiveLocale: switchLocale,
     getWhiteScreenshot,
     updateFrame,
     remapPaletteColors: (pairs) => {
@@ -1562,6 +1580,17 @@ export default function Editor() {
           >
             {bridge.connected ? 'Connected' : bridge.pairing ? 'Pairing...' : 'Offline'}
           </span>
+          <select
+            value={activeLocale}
+            onChange={(e) => switchLocale(e.target.value)}
+            aria-label="Caption language"
+            title="Caption language (edit text per language; Copilot can translate)"
+            className="px-1.5 py-1 border border-glint-border rounded-md text-[11px] bg-glint-bg text-glint-text"
+          >
+            {STORE_LOCALES.map((l) => (
+              <option key={l.id} value={l.id}>{l.id} · {l.label}</option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={openExportSidebar}
@@ -1787,6 +1816,7 @@ export default function Editor() {
                   getLiveCanvases={getLiveCanvases}
                   exportPreset={exportPreset}
                   setExportPreset={setExportPreset}
+                  activeLocale={activeLocale}
                   themes={themes}
                   canvasWidth={canvasW}
                   canvasHeight={canvasH}
