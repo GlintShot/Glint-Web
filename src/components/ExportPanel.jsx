@@ -26,6 +26,7 @@ export default function ExportPanel({
   textOverlay,
   fontFamily,
   activeLocale,
+  locales,
 }) {
   const [exportedUrls, setExportedUrls] = useState([]);
   const [packing, setPacking] = useState(false);
@@ -84,6 +85,7 @@ export default function ExportPanel({
         canvasWidth={canvasWidth}
         canvasHeight={canvasHeight}
         activeLocale={activeLocale}
+        locales={locales}
         onPreviewsReady={setExportedUrls}
       />
 

@@ -26,6 +26,7 @@ export default function FrameExport({
   canvasWidth = 1080,
   canvasHeight = 1920,
   activeLocale = BASE_LOCALE,
+  locales,
   onPreviewsReady,
 }) {
   const [processing, setProcessing] = useState(false);
@@ -34,7 +35,7 @@ export default function FrameExport({
   const [excluded, setExcluded] = useState(() => new Set());
 
   const preset = EXPORT_PRESETS[exportPreset] ?? EXPORT_PRESETS['play/phone'];
-  const available = localesOnCanvases(getLiveCanvases?.() || []);
+  const available = locales?.length ? locales : localesOnCanvases(getLiveCanvases?.() || []);
   const exportLocales = available.filter((l) => !excluded.has(l));
 
   const toggleLocale = (id) => {
