@@ -13,6 +13,7 @@ import {
 import { isUserScreenshot } from './assetLibrary.js';
 import { normalizeHex, remapCanvasColors } from './templatePalette.js';
 import { addGraphicLayer, addShapeLayer } from './graphicLayers.js';
+import { BASE_LOCALE, STORE_LOCALES, getLocale, setLocaleText } from './locales.js';
 
 export function findDeviceOnCanvas(canvas) {
   if (!canvas?.getObjects) return null;
@@ -46,6 +47,8 @@ export function getEditorState(ctx) {
   return {
     activeIndex,
     deviceFrame,
+    activeLocale: ctx.getActiveLocale?.() ?? BASE_LOCALE,
+    locales: STORE_LOCALES.map((l) => l.id),
     frameCount: frames.length,
     frames: frames.map((f, index) => {
       const canvas = ctx.getCanvas?.(f.id) || null;
@@ -63,6 +66,7 @@ export function getEditorState(ctx) {
           text: t.text || '',
           fill: t.fill || null,
           fontSize: t.fontSize || null,
+          i18n: t.glintI18n || null,
         }));
       const lw = device?.glintLayoutW || device?.width || 0;
       const lh = device?.glintLayoutH || device?.height || 0;
@@ -332,6 +336,21 @@ export function setTextContent(ctx, text, frameIndex, textIndex = 0) {
   return { ok: true, frameIndex: index, textIndex, text: target.text };
 }
 
+/** Store translated captions. `items: [{ locale, frameIndex, textIndex, text }]` or one item as args. */
+export function setLocaleTexts(ctx, args = {}) {
+  const items = Array.isArray(args.items) ? args.items : [args];
+  const results = items.map(({ locale, frameIndex, textIndex = 0, text }) => {
+    if (!getLocale(locale)) return { ok: false, error: 'unknown_locale', locale };
+    const { canvas, index } = canvasAt(ctx, frameIndex);
+    if (!canvas) return { ok: false, error: 'no_canvas', frameIndex: index };
+    const target = textObjects(canvas)[textIndex];
+    if (!target) return { ok: false, error: 'text_not_found', frameIndex: index, textIndex };
+    setLocaleText(canvas, target, locale, text);
+    return { ok: true, locale, frameIndex: index, textIndex };
+  });
+  return { ok: results.every((r) => r.ok), results };
+}
+
 /** Add a text overlay on a frame (defaults to active). */
 export function addText(ctx, text, frameIndex, opts = {}) {
   const { canvas, index } = canvasAt(ctx, frameIndex);
@@ -460,6 +479,8 @@ export const CANVAS_AGENT_OPS = [
   'setScreenshotStyle',
   'setText',
   'addText',
+  'setLocale',
+  'setLocaleText',
   'addGraphic',
   'addShape',
   'clearDecorations',
@@ -543,6 +564,11 @@ export async function runCanvasOp(ctx, op, args = {}) {
       return setTextContent(ctx, args.text, args.frameIndex, args.textIndex ?? 0);
     case 'addText':
       return addText(ctx, args.text, args.frameIndex, args);
+    case 'setLocale':
+      if (typeof ctx.setActiveLocale !== 'function') return { ok: false, error: 'locale_unsupported' };
+      return ctx.setActiveLocale(args.locale);
+    case 'setLocaleText':
+      return setLocaleTexts(ctx, args);
     case 'addGraphic':
       return addGraphic(ctx, args);
     case 'addShape':
